@@ -8,12 +8,12 @@ internal class Program
     private static void PrintUsage()
     {
         var exeName = Path.GetFileName(Environment.ProcessPath);
-        Console.WriteLine($"USAGE: {exeName} <LibraryFileName (.mnlgxdlib, .mnlgxdprog, .prog_bin)>");
+        Console.WriteLine($"USAGE: {exeName} <LibraryFileName (.mnlgxdlib, .mnlgxdprog, .prog_bin)> <OutputDirectory>");
     }
 
     static void Main(string[] args)
     {
-        if (args.Length != 1)
+        if (args.Length != 2)
         {
             PrintUsage();
             return;
@@ -23,12 +23,20 @@ internal class Program
         var userUnitMappings = ReadUserMappingsJson();
 
         Console.WriteLine($"Processing {args[0]}...");
+        Console.WriteLine($"Output directory: {args[1]}...");
+
+        // Ensure output directory exists
+        var outputDir = args[1];
+        if (!Directory.Exists(outputDir))
+        {
+            Directory.CreateDirectory(outputDir);
+        }
 
         var fileContent = File.ReadAllBytes(args[0]);
         var entries = LibraryFileReader.GetAllPrograms(fileContent);
         Console.WriteLine($"Found {entries.Count} programs...");
 
-        var outputPathBase = Path.GetFileNameWithoutExtension(args[0]) + "_";
+        var outputPathBase = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(args[0]) + "_");
 
         var reportGenerators = new List<IReportGenerator>
         {
