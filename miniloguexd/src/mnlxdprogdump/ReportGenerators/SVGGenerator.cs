@@ -534,7 +534,7 @@ public class SVGGenerator : IReportGenerator
     {
         var g = xmlDoc.CreateElement("g", SvgNamespace);
 
-        g.AppendChild(CreateVSwitch(xmlDoc, x, y, "WAVE", (int)VcoWave.SAW, "", "SQR", "TRI", "SAW"));
+        g.AppendChild(CreateVSwitch(xmlDoc, x, y, "WAVE", (int)wave, "", "SQR", "TRI", "SAW"));
         g.AppendChild(CreateVSwitch(xmlDoc, x + 100, y, "OCTAVE", octave, "16'", "8'", "4'", "2'"));
 
         return g;
