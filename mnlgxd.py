@@ -5,7 +5,7 @@
 # run "python mnlgxd.py test.mnlgxdprog" to print the sound in a program name test.mnlgxdprog
 # or "python mnlgxd.py test.mnlgxdlib 1" to print the second sound in the bank named test.mnlgxdlib
 
-import struct, sys, zipfile, fpdf
+import struct, sys, zipfile
 
 fileStructure =	[
   ("MAGIC", "<4s"),
@@ -596,7 +596,10 @@ for i, parameter in enumerate(fileStructure):
     print(parameter[0] + ': ' + str(eval(parameter[2]))) # transform
 
 
-""" pdf = fpdf.FPDF('L', 'mm', 'A4')
+"""
+import fpdf
+
+pdf = fpdf.FPDF('L', 'mm', 'A4')
 pdf.add_page()
 pdf.image('monologue panel.png', 0, 0, 297)
 pdf.set_font('Arial', '', 10)
