@@ -91,6 +91,13 @@ internal class Program
             }
 
             var progName = program.ProgramName?.TrimEnd() ?? Name;
+
+            // Skip "Init Program" and continue
+            if (progName == "Init Program")
+            {
+                continue;
+            }
+
             var reportBaseFilename = outputPathBase + GetProgFileName(Name) + "_" + EscapeFileName(progName);
 
             foreach (var repGen in reportGenerators)
