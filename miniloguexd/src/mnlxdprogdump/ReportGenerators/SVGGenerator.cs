@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using System.Xml;
+using System.IO;
 
 namespace mnlxdprogdump;
 
@@ -96,17 +97,25 @@ public class SVGGenerator : IReportGenerator
 
         xmlDoc.AppendChild(svgElem);
 
-        var outSb = new StringBuilder();
-
-
-        using (var tw = XmlWriter.Create(outSb, new XmlWriterSettings
+        using (var memoryStream = new MemoryStream())
         {
-            Indent = true
-        }))
-        {
-            xmlDoc.Save(tw);
+            var xmlWriterSettings = new XmlWriterSettings
+            {
+                Indent = true,
+                Encoding = Encoding.UTF8
+            };
+
+            using (var tw = XmlWriter.Create(memoryStream, xmlWriterSettings))
+            {
+                xmlDoc.Save(tw);
+            }
+
+            memoryStream.Position = 0;
+            using (var reader = new StreamReader(memoryStream, Encoding.UTF8))
+            {
+                return reader.ReadToEnd();
+            }
         }
-        return outSb.ToString();
     }
 
     private static XmlElement CreateMiscSection(XmlDocument xmlDoc, ProgramData program, int x)
@@ -274,7 +283,7 @@ public class SVGGenerator : IReportGenerator
 
     private static XmlElement CreateVoiceModeSection(XmlDocument xmlDoc, ProgramData program, int x)
     {
-        var g = xmlDoc.CreateElement("g", SvgNamespace);      
+        var g = xmlDoc.CreateElement("g", SvgNamespace);
 
         g.AppendChild(CreateVoiceModeOctaveSwitch(xmlDoc, program, x - 20, firstRowY));
         g.AppendChild(CreateDividerLine(xmlDoc, x + 130));
@@ -327,7 +336,7 @@ public class SVGGenerator : IReportGenerator
 
 
         var secondX = x + 180;
-        g.AppendChild(CreateDividerLine(xmlDoc, secondX + 125));            
+        g.AppendChild(CreateDividerLine(xmlDoc, secondX + 125));
 
         var portamentoPercent = Math.Round(PercentFromValue(program.Portamento, 0, 127), 2);
         var portamentoLabel = $"PORTAMENTO\n{portamentoPercent}%\nRaw: {program.Portamento}\nMode: {program.PortamentoMode}\nBPM Sync: {(program.PortamentoBPMSync ? "On" : "Off")}";
@@ -335,9 +344,9 @@ public class SVGGenerator : IReportGenerator
 
         var vmDepthPercent = PercentFromValue(program.VoiceModeDepth, 0, 1023);
         var vmDepthLabel = DisplayHelper.VoiceModeDepthLabel(program.VoiceModeType, program.VoiceModeDepth);
-        g.AppendChild(CreateKnob(xmlDoc, $"VOICE MODE\nDEPTH\n\n{vmDepthLabel}\nRaw: {program.VoiceModeDepth}\n({Percent1023String(program.VoiceModeDepth)})", secondX, secondRowY, vmDepthPercent));            
+        g.AppendChild(CreateKnob(xmlDoc, $"VOICE MODE\nDEPTH\n\n{vmDepthLabel}\nRaw: {program.VoiceModeDepth}\n({Percent1023String(program.VoiceModeDepth)})", secondX, secondRowY, vmDepthPercent));
         g.AppendChild(CreateVSwitch(xmlDoc, secondX-10, thirdRowY, "", (int)(program.VoiceModeType) - 1, "ARP/\nLATCH", "CHORD", "UNISON", "POLY"));
-        
+
         return g;
     }
 
@@ -443,7 +452,7 @@ public class SVGGenerator : IReportGenerator
         g.AppendChild(CreateKnob(xmlDoc, $"SHIFT+SHAPE\nRATIO OFFSET\nRaw: {program.ShiftShapeNoise}\n({Percent1023String(program.ShiftShapeVPM)})", x + 355, thirdRowY, PercentFromValue(program.ShiftShapeNoise, 0, 1023)));
 
         // 0~200=-100%~+100%
-        var vpmSettings = "**Program Edit / Multi Engine\n" 
+        var vpmSettings = "**Program Edit / Multi Engine\n"
             + $"Feedback: {DisplayHelper.MinusToPlus100String(program.VPMParameter1Feedback)}\n"
             + $"Noise Depth: {DisplayHelper.MinusToPlus100String(program.VPMParameter2NoiseDepth)}\n"
             + $"Shape Mod Int: {DisplayHelper.MinusToPlus100String(program.VPMParameter3ShapeModInt)}\n"
@@ -555,7 +564,7 @@ public class SVGGenerator : IReportGenerator
         var cy = y + KnobRadius;
 
         g.AppendChild(CreateCircle(xmlDoc, cx, cy, KnobRadius));
-        
+
         if (!double.IsNaN(percent))
         {
             var indicator = CreateLine(xmlDoc, cx, cy, cx, cy + KnobRadius);
