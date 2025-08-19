@@ -24,3 +24,4 @@ _Debug
 Thumbs.db
 Desktop.ini
 launchSettings.json
+.env
