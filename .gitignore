@@ -26,3 +26,5 @@ Desktop.ini
 launchSettings.json
 .env
 __pycache__
+ts_web/node_modules
+ts_web/dist
