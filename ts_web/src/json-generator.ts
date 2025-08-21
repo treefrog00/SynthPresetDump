@@ -7,18 +7,27 @@ export class JsonGenerator {
   }
 
   private static serializeProgramData(programData: ProgramData): Record<string, any> {
-    const result: Record<string, any> = {};
+    const programResult: Record<string, any> = {};
 
     for (const [key, value] of Object.entries(programData)) {
       if (typeof value === 'object' && value !== null && 'valueOf' in value) {
         // Handle enum types
-        result[key] = value.valueOf();
+        programResult[key] = value.valueOf();
       } else {
         // Handle primitive types
-        result[key] = value;
+        programResult[key] = value;
       }
     }
 
-    return result;
+    const sequencerResult: Record<string, any> = {};
+    const userUnitDescriptions: Record<string, any> = {};
+    const userUnitMappings: Record<string, any> = {};
+
+    return {
+      "program": programResult,
+      "sequencerV2": sequencerResult,
+      "userUnitDescriptions": userUnitDescriptions,
+      "userUnitMappings": userUnitMappings
+    };
   }
 }

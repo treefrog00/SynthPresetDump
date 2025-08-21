@@ -129,12 +129,13 @@ export class DisplayHelper {
 
   static minusToPlus100String(value: number): string {
     const signed = value - 100;
-    if (signed <= 0) return `${signed}%`;
-    return `+${signed}%`;
+    return `${signed}%`;  // No + prefix for positive values to match C#
   }
 
   static percent1023String(value: number): string {
-    const percent = Math.round(value * 100 / 1023);
-    return `${percent}%`;
+    const percent = value * 100 / 1023;
+    // Round to 1 decimal place to match C# precision
+    const rounded = Math.round(percent * 10) / 10;
+    return `${rounded}%`;
   }
 }

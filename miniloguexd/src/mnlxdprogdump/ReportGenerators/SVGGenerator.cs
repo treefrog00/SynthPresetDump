@@ -64,8 +64,7 @@ public class SVGGenerator : IReportGenerator
         outerRect.SetAttribute("ry", "30");
         svgElem.AppendChild(outerRect);
 
-        var programLabel = CreateLabel(xmlDoc, "Program: " + programData.ProgramName, 30, 30, TextSize.ProgramHeader, TextAnchor.start);
-        programLabel.SetAttribute("font-weight", "bold");
+        var programLabel = CreateLabel(xmlDoc, "Program: " + programData.ProgramName, 30, 30, TextSize.ProgramHeader, TextAnchor.start, "bold");
         svgElem.AppendChild(programLabel);
         svgElem.AppendChild(CreateLogo(xmlDoc, 35, 890));
 
@@ -627,15 +626,14 @@ public class SVGGenerator : IReportGenerator
 
         var logoWidth = 180 + padding;
 
-        var minxdLabel = CreateLabel(xmlDoc, "minilogue xd", x + logoWidth, y + padding - 8, TextSize.ProgramHeader, TextAnchor.start);
-        minxdLabel.SetAttribute("font-weight", "bold");
+        var minxdLabel = CreateLabel(xmlDoc, "minilogue xd", x + logoWidth, y + padding - 8, TextSize.ProgramHeader, TextAnchor.start, "bold");
         elem.AppendChild(minxdLabel);
 
         elem.AppendChild(CreateLabel(xmlDoc, "POLYPHONIC ANALOGUE SYNTHESIZER", x + logoWidth, y + padding + 40, TextSize.SynthName, TextAnchor.start));
         return elem;
     }
 
-    private static XmlElement CreateLabel(XmlDocument xmlDoc, string text, int x, int y, TextSize size = TextSize.Normal, TextAnchor anchor = TextAnchor.middle)
+    private static XmlElement CreateLabel(XmlDocument xmlDoc, string text, int x, int y, TextSize size = TextSize.Normal, TextAnchor anchor = TextAnchor.middle, string? fontWeight = null)
     {
         string fontSize = size switch
         {
@@ -666,6 +664,7 @@ public class SVGGenerator : IReportGenerator
         foreach (var line in lines)
         {
             var bold = line.StartsWith("**");
+            var lineFontWeight = fontWeight ?? (bold ? "bold" : "normal");
 
             var label = xmlDoc.CreateElement("text", SvgNamespace);
             label.SetAttribute("x", x.ToString());
@@ -674,9 +673,9 @@ public class SVGGenerator : IReportGenerator
             label.SetAttribute("text-anchor", anchor.ToString());
             label.SetAttribute("font-family", fontFamily);
             label.SetAttribute("font-size", fontSize);
-            if (bold)
+            if (lineFontWeight != "normal")
             {
-                label.SetAttribute("font-weight", "bold");
+                label.SetAttribute("font-weight", lineFontWeight);
             }
             label.SetAttribute("fill", strokeColor);
             label.InnerText = bold ? line[2..] : line;

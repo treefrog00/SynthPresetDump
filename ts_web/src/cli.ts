@@ -33,18 +33,9 @@ async function parseFile(inputPath: string, outputDir: string): Promise<void> {
         // Create mock file for parser
         const mockFile = new MockFile(data, fileName);
 
-        console.log('⚙️  Parsing...');
-
-        // Parse using our TypeScript parser
         const programData = await BinaryParser.parseFile(mockFile as any);
 
-        console.log(`✅ Parsed program: ${programData.programName || 'Untitled'}`);
-
-        // Generate outputs
-        console.log('📄 Generating JSON...');
         const jsonOutput = JsonGenerator.generate(programData);
-
-        console.log('🎨 Generating SVG...');
         const svgOutput = SvgGenerator.generate(programData);
 
         // Ensure output directory exists

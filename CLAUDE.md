@@ -38,6 +38,22 @@ python mnlgxd.py test.mnlgxdprog
 python mnlgxd.py test.mnlgxdlib 1
 ```
 
+### TypeScript CLI version
+
+For testing the TypeScript implementation there is a script that performs a detailed comparison of the JSON output of both the C# and TypeScript implementations.
+
+It assumes that input test files, alongside the C# output files, are stored in subfolders inside the "copyrighted_data" folder (which is ignored by git). For a subfolder named "init_program", the comparison can be run like this:
+
+```bash
+npm run test-compare init_program
+```
+
+For running the web version in a dev server, use:
+
+```bash
+npm run dev
+```
+
 ## Architecture
 
 ### Binary Format Parsing
