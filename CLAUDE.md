@@ -1,14 +1,13 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Project Overview
 
 This repository contains tools for parsing and displaying Korg Minilogue XD synthesizer presets in human-readable formats. The project has three main implementations:
 
-1. **C# Console Application** (`miniloguexd/`) - Original .NET implementation
-2. **Python Web API** (`preset_dump/`) - FastAPI-based web service 
-3. **Python Script** (`mnlgxd.py`) - Standalone parsing script
+1. **C# Console Application** (`miniloguexd/`) - .NET implementation
+2. **Python Script** (`mnlgxd.py`) - Standalone parsing script, implemented entirely independently of the C# version
+3. **TypeScript version** - can be used either as a Node CLI using tsx, or used from a static HTML file after being compiled to JavaScript. A work in progress.
+
 
 All implementations parse the same binary format but target different use cases.
 
@@ -28,23 +27,6 @@ cd miniloguexd/src/mnlxdprogdump && dotnet publish -c Release -r win-x64 -o publ
 
 # Run the application
 cd miniloguexd/src/mnlxdprogdump && dotnet run <LibraryFileName> <OutputDirectory>
-```
-
-### Python Web API (preset_dump/)
-```bash
-# Install dependencies
-cd preset_dump && uv sync
-
-# Run tests
-cd preset_dump && pytest
-
-# Run the web server
-cd preset_dump && python run_server.py
-# or
-cd preset_dump && uvicorn src.web.main:app --host 0.0.0.0 --port 8000
-
-# Run a single test file
-cd preset_dump && pytest tests/test_binary_parser.py -v
 ```
 
 ### Standalone Python Script
@@ -71,13 +53,6 @@ python mnlgxd.py test.mnlgxdlib 1
 - `ReportGenerators/` - Output format generators (JSON, SVG)
 - `Parser/LibraryFileReader.cs` - ZIP archive handling
 
-**Python Implementation (`preset_dump/src/`):**
-- `services/binary_parser.py` - Struct-based binary parsing with `ProgramParser` class
-- `services/program_data.py` - Python data model matching C# structure
-- `services/json_generator.py` - JSON output generator
-- `services/svg_generator.py` - SVG output generator
-- `web/main.py` - FastAPI application with file upload endpoints
-
 ### Data Flow
 1. **Input**: ZIP archives (`.mnlgxdprog`, `.mnlgxdlib`) or raw binary (`.prog_bin`)
 2. **Parsing**: Extract binary data and parse into structured data models
@@ -91,17 +66,15 @@ python mnlgxd.py test.mnlgxdlib 1
 
 ### Testing
 - C# tests use NUnit framework in `miniloguexd/src/mnlxdprogdump.Tests/`
-- Python tests use pytest in `preset_dump/tests/` with test coverage for API endpoints, parsing, and generators
-- Python uses `conftest.py` for shared test fixtures
 
 ### Output Formats
-Both implementations generate:
+Both C# and TypeScript implementations generate:
 - **JSON**: Structured data with human-readable labels and raw values
 - **SVG**: Visual preset sheets showing all synthesizer parameters in a grid layout
 
+The Python script generates text output.
+
 ## Development Notes
 
-- The project targets .NET 9 for the C# implementation and Python 3.13+ for the Python implementation
-- Programs named "Init Program" are automatically skipped during processing
 - The binary format includes sequencer data (V1 and V2 formats) in addition to preset parameters
 - All implementations handle bit-level parsing for packed parameter data (e.g., user parameter types)
