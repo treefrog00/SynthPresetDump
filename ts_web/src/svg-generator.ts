@@ -1,5 +1,6 @@
 import { ProgramData } from './program-data';
 import * as Enums from './enums';
+import { DisplayHelper } from './display-helper';
 
 export class SvgGenerator {
   private static readonly SVG_NAMESPACE = "http://www.w3.org/2000/svg";
@@ -39,9 +40,8 @@ export class SvgGenerator {
     // Program title
     svgElements.push(this.createText(`Program: ${programData.programName || 'Untitled'}`, 30, 30, "3em", "bold"));
     
-    // Logo placeholder
-    svgElements.push(this.createText("minilogue xd", 35 + this.PADDING, 890 + this.PADDING, "2em", "bold"));
-    svgElements.push(this.createText("POLYPHONIC ANALOGUE SYNTHESIZER", 35 + this.PADDING, 930 + this.PADDING, "1.2em"));
+    // Korg Logo
+    svgElements.push(...this.createLogo(35, 890));
     
     // Add main sections
     svgElements.push(...this.addVoiceModeSection(programData, 75));
@@ -59,6 +59,21 @@ export class SvgGenerator {
   private static createText(text: string, x: number, y: number, fontSize: string = "1.2em", fontWeight: string = "normal", textAnchor: string = "start"): string {
     const escapedText = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     return `<text x="${x}" y="${y}" font-family="Arial, sans-serif" font-size="${fontSize}" font-weight="${fontWeight}" text-anchor="${textAnchor}" dominant-baseline="hanging" fill="${this.STROKE_COLOR}">${escapedText}</text>`;
+  }
+
+  private static createLogo(x: number, y: number): string[] {
+    const elements: string[] = [];
+    
+    // Korg logo SVG path (complex path from C# version)
+    const korgPath = 'm 156.03997,1.1862376 h -22.7358 c -11.0293,0 -11.80454,10.7904014 -11.80454,10.7904014 v 29.967888 c 0.0158,9.625935 10.98025,10.864769 10.98025,10.864769 h 23.56009 V 24.833357 c 2.7055,0 2.51565,-5.045541 0,-5.045541 -2.27832,0 -14.98314,0 -14.98314,0 v 19.115786 c 0,3.553547 -5.1579,3.553547 -5.1579,0 0,-3.605772 0,-23.76737 0,-23.76737 0,-2.300473 2.57895,-2.58368 2.57895,-2.58368 h 17.56209 V 1.1862376 M 100.25106,19.272028 c 0,3.058334 -5.173688,3.395337 -5.173688,0 V 14.10466 c -0.142421,-3.547227 5.189508,-3.608932 5.173688,0 z m 12.3884,9.298415 -6.20209,-1.548945 c 4.84143,-1.272067 7.48364,-3.933277 7.56277,-8.300066 V 8.6604112 c 0,-1.7087456 -2.16758,-7.2162787 -9.11331,-7.4725899 H 80.616341 V 52.856765 H 95.077372 V 33.220439 c -0.332261,-1.015754 2.325808,-3.297241 3.069421,-0.314849 l 4.161107,19.951175 h 16.02737 L 112.63946,28.570443 M 59.935799,38.903602 c 0,3.229202 -5.157884,3.284585 -5.157884,0 v -23.76737 c 0,-3.251356 5.157884,-3.227625 5.157884,0 0,3.229212 0,20.541319 0,23.76737 z M 74.3652,11.884876 c 0,0 -0.506308,-10.4423256 -11.834646,-10.95811384 H 52.198982 C 50.869954,0.88093668 40.441876,2.391852 40.299476,12.812027 v 29.366664 c 0,0 0.901838,10.909063 11.899506,10.932794 h 10.331572 c 0,0 11.897916,-0.403469 11.88211,-11.880517 L 74.365184,11.884876 M 0,52.855174 V 1.1862376 H 14.476856 V 20.302021 c 0.237329,2.596339 2.879553,1.442938 3.069413,0.246819 L 20.678968,1.1862376 H 36.69211 l -5.679986,23.7673634 -6.202115,1.547361 6.708407,1.552111 5.695813,24.802101 H 21.186844 L 17.546269,31.921477 c -0.174043,-1.62014 -3.021944,-1.634381 -3.069413,0.265806 -0.04749,1.897023 0,20.667891 0,20.667891 H 0';
+    
+    elements.push(`<g>`);
+    elements.push(`<path d="${korgPath}" stroke="none" fill="${this.STROKE_COLOR}" fill-rule="nonzero" transform="translate(${this.PADDING + x}, ${this.PADDING + y})"/>`);
+    elements.push(this.createText("minilogue xd", this.PADDING + x + 190, this.PADDING + y + 2, "3em", "bold"));
+    elements.push(this.createText("POLYPHONIC ANALOGUE SYNTHESIZER", this.PADDING + x + 190, this.PADDING + y + 50, "1.5em"));
+    elements.push(`</g>`);
+    
+    return elements;
   }
 
   private static createKnob(label: string, x: number, y: number, percent: number): string[] {
@@ -121,17 +136,94 @@ export class SvgGenerator {
     // Octave switch
     elements.push(...this.addOctaveSwitch(programData, x - 20, this.FIRST_ROW_Y));
     
-    // Portamento knob
-    const portamentoPercent = this.percentFromValue(programData.portamento, 0, 127);
-    elements.push(...this.createKnob(`PORTAMENTO ${portamentoPercent.toFixed(1)}%`, x + 180, this.FIRST_ROW_Y, portamentoPercent));
+    // Vertical divider line
+    elements.push(`<line stroke="${this.STROKE_COLOR}" stroke-width="2" x1="${x + 130}" y1="${this.FIRST_ROW_Y}" x2="${x + 130}" y2="${this.SYNTH_HEIGHT - 120}"/>`);
     
-    // Voice mode depth knob
+    // Helper function for signed values
+    const scaleKeyToStr = (val: number, offset: number): string => {
+      const valTransposed = val - offset;
+      return valTransposed > 0 ? `+${valTransposed}` : valTransposed.toString();
+    };
+    
+    // Left column - Program settings text
+    const leftColumnText = [
+      "Program Level",
+      DisplayHelper.programLevelDecibel(programData.programLevel),
+      "",
+      "**ProgEdit / Pitch",
+      "Microtuning",
+      Enums.MicroTuning[programData.microTuning] || programData.microTuning.toString(),
+      "",
+      "Scale Key", 
+      scaleKeyToStr(programData.scaleKey, 12) + " Note(s)",
+      "",
+      "Program Tuning",
+      scaleKeyToStr(programData.programTuning, 50) + " Cent",
+      "",
+      "Program Transpose",
+      scaleKeyToStr(programData.programTranspose, 13) + " Note(s)",
+      "",
+      "**ProgEdit / Joystick",
+      "X+ Bend Range",
+      programData.bendRangePlus === 0 ? "Off" : `${programData.bendRangePlus} Note(s)`,
+      "",
+      "X- Bend Range", 
+      programData.bendRangeMinus === 0 ? "Off" : `${programData.bendRangeMinus} Note(s)`,
+      "",
+      "Y+ Assign",
+      Enums.AssignTarget[programData.joystickAssignPlus] || programData.joystickAssignPlus.toString(),
+      "",
+      "Y+ Range",
+      DisplayHelper.minusToPlus100String(programData.joystickRangePlus),
+      "",
+      "Y- Assign",
+      Enums.AssignTarget[programData.joystickAssignMinus] || programData.joystickAssignMinus.toString(),
+      "",
+      "Y- Range",
+      DisplayHelper.minusToPlus100String(programData.joystickRangeMinus)
+    ];
+    
+    // Add left column text
+    leftColumnText.forEach((line, index) => {
+      const yPos = this.FIRST_ROW_Y + 90 + (index * 20);
+      const fontWeight = line.startsWith('**') ? 'bold' : 'normal';
+      elements.push(this.createText(line, x + 38, yPos, "1.2em", fontWeight));
+    });
+    
+    const secondX = x + 180;
+    
+    // Another vertical divider line
+    elements.push(`<line stroke="${this.STROKE_COLOR}" stroke-width="2" x1="${secondX + 125}" y1="${this.FIRST_ROW_Y}" x2="${secondX + 125}" y2="${this.SYNTH_HEIGHT - 120}"/>`);
+    
+    // Portamento knob with detailed info
+    const portamentoPercent = Math.round(this.percentFromValue(programData.portamento, 0, 127) * 100) / 100;
+    const portamentoLabel = [
+      "PORTAMENTO",
+      `${portamentoPercent}%`,
+      `Raw: ${programData.portamento}`,
+      `Mode: ${Enums.PortamentoMode[programData.portamentoMode] || programData.portamentoMode}`,
+      `BPM Sync: ${programData.portamentoBpmSync ? "On" : "Off"}`
+    ].join('\n');
+    elements.push(...this.createKnob(portamentoLabel, secondX, this.FIRST_ROW_Y, portamentoPercent));
+    
+    // Voice mode depth knob with detailed info
+    const secondRowY = this.FIRST_ROW_Y + this.ROW_SPACING;
     const vmDepthPercent = this.percentFromValue(programData.voiceModeDepth, 0, 1023);
-    elements.push(...this.createKnob(`VOICE MODE DEPTH ${vmDepthPercent.toFixed(1)}%`, x + 180, this.FIRST_ROW_Y + this.ROW_SPACING, vmDepthPercent));
+    const vmDepthLabel = DisplayHelper.voiceModeDepthLabel(programData.voiceModeType, programData.voiceModeDepth);
+    const vmDepthKnobLabel = [
+      "VOICE MODE",
+      "DEPTH",
+      "",
+      vmDepthLabel,
+      `Raw: ${programData.voiceModeDepth}`,
+      `(${DisplayHelper.percent1023String(programData.voiceModeDepth)})`
+    ].join('\n');
+    elements.push(...this.createKnob(vmDepthKnobLabel, secondX, secondRowY, vmDepthPercent));
     
     // Voice mode type switch
-    const voiceModes = ["ARP/LATCH", "CHORD", "UNISON", "POLY"];
-    elements.push(...this.createSwitch("", x + 170, this.FIRST_ROW_Y + this.ROW_SPACING * 2, programData.voiceModeType - 1, voiceModes));
+    const thirdRowY = this.FIRST_ROW_Y + this.ROW_SPACING * 2;
+    const voiceModes = ["ARP/\nLATCH", "CHORD", "UNISON", "POLY"];
+    elements.push(...this.createSwitch("", secondX - 10, thirdRowY, programData.voiceModeType - 1, voiceModes));
     
     return elements;
   }

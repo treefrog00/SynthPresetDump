@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "extract-lib": "tsx src/extract-lib.ts"
   },
   "keywords": [],
   "author": "",
@@ -13,6 +14,7 @@
   "description": "",
   "devDependencies": {
     "@types/node": "^24.3.0",
+    "tsx": "^4.20.4",
     "typescript": "^5.9.2",
     "vite": "^7.1.3"
   },

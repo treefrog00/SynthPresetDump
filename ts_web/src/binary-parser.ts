@@ -1,49 +1,41 @@
 import { ProgramData } from './program-data';
 import * as Enums from './enums';
+import JSZip from 'jszip';
 
 export class BinaryParser {
   static async parseFile(file: File): Promise<ProgramData> {
     const arrayBuffer = await file.arrayBuffer();
     const uint8Array = new Uint8Array(arrayBuffer);
-    
-    if (file.name.endsWith('.mnlgxdprog') || file.name.endsWith('.mnlgxdlib')) {
-      return this.parseZipFile(uint8Array);
-    } else {
+
+    if (file.name.endsWith('.prog_bin')) {
       return this.parseBinary(uint8Array);
+    } else if (file.name.endsWith('.mnlgxdprog') || file.name.endsWith('.mnlgxdlib')) {
+      return await this.parseZipFile(uint8Array);
+    } else {
+      throw new Error('File must be either a ZIP file containing .prog_bin files or a direct .prog_bin file');
     }
   }
 
-  private static parseZipFile(data: Uint8Array): ProgramData {
-    const dataView = new DataView(data.buffer);
-    
-    // Look for ZIP signature (PK\x03\x04)
-    let zipOffset = -1;
-    for (let i = 0; i < data.length - 4; i++) {
-      if (data[i] === 0x50 && data[i + 1] === 0x4B && 
-          data[i + 2] === 0x03 && data[i + 3] === 0x04) {
-        zipOffset = i;
-        break;
-      }
-    }
+  private static async parseZipFile(data: Uint8Array): Promise<ProgramData> {
+    try {
+      const zip = new JSZip();
+      await zip.loadAsync(data);
 
-    if (zipOffset === -1) {
-      throw new Error('No ZIP signature found');
-    }
+      // Look for .prog_bin files
+      const progFiles = Object.keys(zip.files).filter(name => name.endsWith('.prog_bin'));
 
-    // Simple ZIP parsing - look for .prog_bin files
-    let offset = zipOffset + 30; // Skip local file header
-    
-    while (offset < data.length - 160) {
-      // Try to find prog_bin data by looking for the PROG header
-      if (data[offset] === 0x50 && data[offset + 1] === 0x52 && 
-          data[offset + 2] === 0x4F && data[offset + 3] === 0x47) {
-        const progData = data.slice(offset, offset + 160);
-        return this.parseBinary(progData);
+      if (progFiles.length === 0) {
+        throw new Error('No .prog_bin files found in ZIP');
       }
-      offset++;
+
+      // Use the first .prog_bin file
+      const progFile = zip.files[progFiles[0]];
+      const progData = await progFile.async('uint8array');
+
+      return this.parseBinary(progData);
+    } catch (error) {
+      throw new Error(`Failed to parse ZIP file: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-    
-    throw new Error('No program data found in ZIP file');
   }
 
   static parseBinary(data: Uint8Array): ProgramData {
@@ -274,5 +266,14 @@ export class BinaryParser {
     }
 
     return program;
+  }
+
+  /**
+   * Parse binary data directly from a Uint8Array
+   * This method is useful when you already have the binary data in memory
+   * or for testing purposes
+   */
+  static parseBinaryData(data: Uint8Array): ProgramData {
+    return this.parseBinary(data);
   }
 }
