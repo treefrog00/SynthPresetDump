@@ -132,10 +132,13 @@ export class SvgGenerator {
   }
 
   private static createSwitch(label: string, x: number, y: number, selectedIndex: number, options: string[]): string[] {
+
     const elements: string[] = [];
     const cx = x + this.LED_RADIUS;
     let currentY = y + this.LED_RADIUS;
     const yIncr = (this.LED_RADIUS * 3) + 2;
+
+    elements.push('<g>');
 
     // Options (in reverse order to match Python code)
     for (let i = options.length - 1; i >= 0; i--) {
@@ -168,6 +171,8 @@ export class SvgGenerator {
       const labelX = cx + this.LED_RADIUS + 8;
       elements.push(this.createText(label, labelX, currentY - 8, "1.2em", "normal", "middle"));
     }
+
+    elements.push('</g>');
 
     return elements;
   }
@@ -285,17 +290,10 @@ export class SvgGenerator {
     // Close voice mode depth group
     elements.push('</g>');
 
-    // Group for voice mode type switch
-    elements.push('<g>');
-
     // Voice mode type switch
     const thirdRowY = this.FIRST_ROW_Y + this.ROW_SPACING * 2 + 20;
     const voiceModes = ["ARP/\nLATCH", "CHORD", "UNISON", "POLY"];
     elements.push(...this.createSwitch("", secondX - 10, thirdRowY, programData.voiceModeType - 1, voiceModes));
-
-    // Close voice mode type switch group
-    elements.push('</g>');
-
     // Close outer group wrapper
     elements.push('</g>');
 
@@ -341,43 +339,51 @@ export class SvgGenerator {
     // Outer group wrapper for entire oscillator section
     elements.push('<g>');
 
-    // VCO 1
     elements.push(this.createText("VCO 1", x + 315, this.FIRST_ROW_Y - this.HEADER_OFFSET, "1.6em", "bold", "middle"));
+    const secondRowY = this.FIRST_ROW_Y + this.ROW_SPACING;
+    elements.push(this.createText("VCO 2", x + 315, secondRowY - this.HEADER_OFFSET, "1.6em", "bold", "middle"));
 
+    // VCO 1
+    elements.push('<g>');
     const pitch1Percent = this.percentFromValue(programData.vco1Pitch, 0, 1023);
-    elements.push(...this.createKnob(`PITCH ${pitch1Percent.toFixed(1)}%`, x + 200, this.FIRST_ROW_Y, pitch1Percent));
+    elements.push(...this.createKnob(`PITCH\n${this.pitchCents(programData.vco1Pitch)} Cent\nRaw: ${programData.vco1Pitch}\n(${this.percent1023String(programData.vco1Pitch)})`, x + 200, this.FIRST_ROW_Y, pitch1Percent));
+    elements.push('</g>');
 
+    elements.push('<g>');
     const shape1Percent = this.percentFromValue(programData.vco1Shape, 0, 1023);
-    elements.push(...this.createKnob(`SHAPE ${shape1Percent.toFixed(1)}%`, x + 355, this.FIRST_ROW_Y, shape1Percent));
+    elements.push(...this.createKnob(`SHAPE\nRaw: ${programData.vco1Shape}\n(${this.percent1023String(programData.vco1Shape)})`, x + 355, this.FIRST_ROW_Y, shape1Percent));
+    elements.push('</g>');
 
     // VCO 1 wave and octave switches
-    const waveOptions = ["", "SQR", "TRI", "SAW"];
+    const waveOptions = ["SQR", "TRI", "SAW"];
     elements.push(...this.createSwitch("WAVE", x, this.FIRST_ROW_Y, programData.vco1Wave, waveOptions));
 
     const octaveOptions = ["16'", "8'", "4'", "2'"];
     elements.push(...this.createSwitch("OCTAVE", x + 100, this.FIRST_ROW_Y, programData.vco1Octave, octaveOptions));
-
+    elements.push('</g>');
     // VCO 2
-    const secondRowY = this.FIRST_ROW_Y + this.ROW_SPACING;
-    elements.push(this.createText("VCO 2", x + 315, secondRowY - this.HEADER_OFFSET, "1.6em", "bold", "middle"));
 
+    elements.push('<g>');
     const pitch2Percent = this.percentFromValue(programData.vco2Pitch, 0, 1023);
-    elements.push(...this.createKnob(`PITCH ${pitch2Percent.toFixed(1)}%`, x + 200, secondRowY, pitch2Percent));
+    elements.push(...this.createKnob(`PITCH\n${this.pitchCents(programData.vco2Pitch)} Cent\nRaw: ${programData.vco2Pitch}\n(${this.percent1023String(programData.vco2Pitch)})`, x + 200, secondRowY, pitch2Percent));
 
     const shape2Percent = this.percentFromValue(programData.vco2Shape, 0, 1023);
-    elements.push(...this.createKnob(`SHAPE ${shape2Percent.toFixed(1)}%`, x + 355, secondRowY, shape2Percent));
+    elements.push(...this.createKnob(`SHAPE\nRaw: ${programData.vco2Shape}\n(${this.percent1023String(programData.vco2Shape)})`, x + 355, secondRowY, shape2Percent));
 
     const crossModPercent = this.percentFromValue(programData.crossModDepth, 0, 1023);
     elements.push(...this.createKnob(`CROSS MOD DEPTH ${crossModPercent.toFixed(1)}%`, x + 510, secondRowY, crossModPercent));
 
     // VCO 2 wave and octave switches
+    elements.push('<g>');
     elements.push(...this.createSwitch("WAVE", x, secondRowY, programData.vco2Wave, waveOptions));
     elements.push(...this.createSwitch("OCTAVE", x + 100, secondRowY, programData.vco2Octave, octaveOptions));
+    elements.push('</g>');
 
         // Sync and Ring switches
     const syncOptions = ["Off", "On"];
     elements.push(...this.createSwitch("SYNC", x + 490, this.FIRST_ROW_Y, programData.oscillatorSync ? 1 : 0, syncOptions));
     elements.push(...this.createSwitch("RING", x + 580, this.FIRST_ROW_Y, programData.ringMod ? 1 : 0, syncOptions));
+    elements.push('</g>');
 
     // Add divider line
     elements.push(...this.createDividerLine(x + 650));
@@ -414,10 +420,10 @@ export class SvgGenerator {
     if (programData.multiOscType === Enums.MultiOscType.USER) {
       // User oscillator knobs
       const shiftShapePercent = this.percentFromValue(programData.shiftShapeUser, 0, 1023);
-      elements.push(...this.createKnob(`SHIFT+SHAPE\nRaw: ${programData.shiftShapeUser}`, x + 355, this.FIRST_ROW_Y + this.ROW_SPACING * 2 + 20, shiftShapePercent));
+      elements.push(...this.createKnob(`SHIFT+SHAPE\nRaw: ${programData.shiftShapeUser}\n(${this.percent1023String(programData.shiftShapeUser)})`, x + 355, this.FIRST_ROW_Y + this.ROW_SPACING * 2 + 20, shiftShapePercent));
 
       const shapePercent = this.percentFromValue(programData.shapeUser, 0, 1023);
-      elements.push(...this.createKnob(`SHAPE\nRaw: ${programData.shapeUser}`, x + 510, this.FIRST_ROW_Y + this.ROW_SPACING * 2 + 20, shapePercent));
+      elements.push(...this.createKnob(`SHAPE\nRaw: ${programData.shapeUser}\n(${this.percent1023String(programData.shapeUser)})`, x + 510, this.FIRST_ROW_Y + this.ROW_SPACING * 2 + 20, shapePercent));
     } else if (programData.multiOscType === Enums.MultiOscType.VPM) {
       // VPM oscillator knobs
       const shapePercent = this.percentFromValue(programData.shapeVpm, 0, 1023);
@@ -727,7 +733,44 @@ export class SvgGenerator {
   }
 
   private static percent1023String(value: number): string {
-    const percent = (value / 1023) * 100;
-    return Math.round(percent * 100) / 100 + "%";
+    return `${this.percentFromValue(value, 0, 1023).toFixed(2)}%`;
+  }
+
+  private static pitchCents(value: number): string {
+    // comment copied from C# version:
+
+    /// Korg lists the same value as the end of one and start of the next section,
+    /// so that's not a mistake here.
+    ///
+    ///    0 ~    4 : -1200        (Cent)
+    ///    4 ~  356 : -1200 ~ -256 (Cent)
+    ///  356 ~  476 :  -256 ~  -16 (Cent)
+    ///  476 ~  492 :   -16 ~    0 (Cent)
+    ///  492 ~  532 :     0        (Cent)
+    ///  532 ~  548 :     0 ~   16 (Cent)
+    ///  548 ~  668 :    16 ~  256 (Cent)
+    ///  668 ~ 1020 :   256 ~ 1200 (Cent)
+    /// 1020 ~ 1023 :  1200        (Cent)
+    ///
+    /// Thanks to gekart on GitHub:
+    /// https://gist.github.com/gekart/b187d3c16e6160571ccfcf6c597fea3f#file-mnlgxd-py-L386
+    ///
+    /// That said, I'm not sure if those values are really correct in the Korg manual.
+    /// For example, the Replicant XD Preset has a VCO2 Pitch of 553 (0x2902) which
+    /// is +26 Cent according to the table, but the display on the Minilogue XD shows
+    /// it's more like +10 Cent.
+    ///
+    /// So, need to do some more testing to see if the values in the MIDI Implementation
+    /// Manual are wrong/outdated.
+    if (value >= 0 && value <= 4) return "-1200";
+    if (value >= 4 && value <= 356) return `${((value - 356) * 944 / 352 - 256).toFixed(0)}`;
+    if (value >= 356 && value <= 476) return `${((value - 476) * 2 - 16).toFixed(0)}`;
+    if (value >= 476 && value <= 492) return `${value - 492}`;
+    if (value >= 492 && value <= 532) return "0";
+    if (value >= 532 && value <= 548) return `+${value - 532}`;
+    if (value >= 548 && value <= 668) return `+${((value - 548) * 2 + 16).toFixed(0)}`;
+    if (value >= 668 && value <= 1020) return `+${((value - 668) * 944 / 352 + 256).toFixed(0)}`;
+    if (value >= 1020 && value <= 1023) return "+1200";
+    return "???";
   }
 }

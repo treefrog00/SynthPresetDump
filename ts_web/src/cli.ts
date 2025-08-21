@@ -33,7 +33,7 @@ async function parseFile(inputPath: string, outputDir: string): Promise<void> {
         // Create mock file for parser
         const mockFile = new MockFile(data, fileName);
 
-        const programData = await BinaryParser.parseFile(mockFile as any);
+        const programData = (await BinaryParser.parseFile(mockFile as any)).programs[0];
 
         const jsonOutput = JsonGenerator.generate(programData);
         const svgOutput = SvgGenerator.generate(programData);

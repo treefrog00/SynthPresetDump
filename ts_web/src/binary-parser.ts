@@ -2,21 +2,34 @@ import { ProgramData } from './program-data';
 import * as Enums from './enums';
 import JSZip from 'jszip';
 
+export interface LibraryData {
+  type: 'single' | 'library';
+  programs: ProgramData[];
+  originalFile: File;
+}
+
 export class BinaryParser {
-  static async parseFile(file: File): Promise<ProgramData> {
+  static async parseFile(file: File): Promise<LibraryData> {
     const arrayBuffer = await file.arrayBuffer();
     const uint8Array = new Uint8Array(arrayBuffer);
 
     if (file.name.endsWith('.prog_bin')) {
-      return this.parseBinary(uint8Array);
-    } else if (file.name.endsWith('.mnlgxdprog') || file.name.endsWith('.mnlgxdlib')) {
-      return await this.parseZipFile(uint8Array);
+      const program = this.parseBinary(uint8Array);
+      return {
+        type: 'single',
+        programs: [program],
+        originalFile: file
+      };
+    } else if (file.name.endsWith('.mnlgxdprog')) {
+      return await this.parseZipFile(uint8Array, file);
+    } else if (file.name.endsWith('.mnlgxdlib')) {
+      return await this.parseLibraryFile(uint8Array, file);
     } else {
       throw new Error('File must be either a ZIP file containing .prog_bin files or a direct .prog_bin file');
     }
   }
 
-  private static async parseZipFile(data: Uint8Array): Promise<ProgramData> {
+  private static async parseZipFile(data: Uint8Array, file: File): Promise<LibraryData> {
     try {
       const zip = new JSZip();
       await zip.loadAsync(data);
@@ -31,10 +44,54 @@ export class BinaryParser {
       // Use the first .prog_bin file
       const progFile = zip.files[progFiles[0]];
       const progData = await progFile.async('uint8array');
+      const program = this.parseBinary(progData);
 
-      return this.parseBinary(progData);
+      return {
+        type: 'single',
+        programs: [program],
+        originalFile: file
+      };
     } catch (error) {
       throw new Error(`Failed to parse ZIP file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  private static async parseLibraryFile(data: Uint8Array, file: File): Promise<LibraryData> {
+    try {
+      const zip = new JSZip();
+      await zip.loadAsync(data);
+
+      // Look for all .prog_bin files
+      const progFiles = Object.keys(zip.files).filter(name => name.endsWith('.prog_bin'));
+
+      if (progFiles.length === 0) {
+        throw new Error('No .prog_bin files found in library');
+      }
+
+      // Parse all programs
+      const programs: ProgramData[] = [];
+      for (const fileName of progFiles) {
+        try {
+          const progFile = zip.files[fileName];
+          const progData = await progFile.async('uint8array');
+          const program = this.parseBinary(progData);
+          programs.push(program);
+        } catch (error) {
+          console.warn(`Failed to parse program ${fileName}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      }
+
+      if (programs.length === 0) {
+        throw new Error('No valid programs could be parsed from library');
+      }
+
+      return {
+        type: 'library',
+        programs: programs,
+        originalFile: file
+      };
+    } catch (error) {
+      throw new Error(`Failed to parse library file: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -165,7 +222,7 @@ export class BinaryParser {
 
       try {
         let value: any;
-        
+
         switch (field.type) {
           case 'uint8':
             value = dataView.getUint8(field.offset);
@@ -224,18 +281,18 @@ export class BinaryParser {
 
   private static parseSequencerData(data: Uint8Array, program: any): void {
     const dataView = new DataView(data.buffer, data.byteOffset);
-    
+
     // Check if this is V2 sequencer data (starts with "SQ") or V1 data (starts with "SEQD")
     if (data.length > 161) {
       const sqHeader = new TextDecoder('ascii').decode(data.slice(160, 162));
       if (sqHeader === "SQ") {
         // V2 format
         program.sq = sqHeader;
-        
+
         // Parse active step bits from bytes 162 and 163
         const activeStep1 = dataView.getUint8(162);
         const activeStep2 = dataView.getUint8(163);
-        
+
         program.step1ActiveStepOnOff = (activeStep1 & 0x01) !== 0;
         program.step2ActiveStepOnOff = (activeStep1 & 0x02) !== 0;
         program.step3ActiveStepOnOff = (activeStep1 & 0x04) !== 0;
@@ -244,7 +301,7 @@ export class BinaryParser {
         program.step6ActiveStepOnOff = (activeStep1 & 0x20) !== 0;
         program.step7ActiveStepOnOff = (activeStep1 & 0x40) !== 0;
         program.step8ActiveStepOnOff = (activeStep1 & 0x80) !== 0;
-        
+
         program.step9ActiveStepOnOff = (activeStep2 & 0x01) !== 0;
         program.step10ActiveStepOnOff = (activeStep2 & 0x02) !== 0;
         program.step11ActiveStepOnOff = (activeStep2 & 0x04) !== 0;
@@ -253,10 +310,10 @@ export class BinaryParser {
         program.step14ActiveStepOnOff = (activeStep2 & 0x20) !== 0;
         program.step15ActiveStepOnOff = (activeStep2 & 0x40) !== 0;
         program.step16ActiveStepOnOff = (activeStep2 & 0x80) !== 0;
-        
+
         // Parse sequencer data starting at offset 164
         this.parseSequencerDataStructure(data, program, 164);
-        
+
         // Parse ARP gate time and rate at end of structure
         if (data.length > 1022) {
           program.arpGateTime = dataView.getUint8(1022);
@@ -285,10 +342,10 @@ export class BinaryParser {
           program.step14ActiveStepOnOff = true;
           program.step15ActiveStepOnOff = true;
           program.step16ActiveStepOnOff = true;
-          
+
           // Parse sequencer data starting at offset 164
           this.parseSequencerDataStructure(data, program, 164);
-          
+
           // V1 doesn't have ARP data, use defaults
           program.arpGateTime = 55; // 75%
           program.arpRate = 4; // Sixteen
@@ -296,20 +353,20 @@ export class BinaryParser {
       }
     }
   }
-  
+
   private static parseSequencerDataStructure(data: Uint8Array, program: any, offset: number): void {
     const dataView = new DataView(data.buffer, data.byteOffset);
-    
+
     // Create sequencer data object similar to C# structure
     const sequencerData: any = {};
-    
+
     try {
       if (offset + 2 < data.length) sequencerData.bpm = dataView.getUint16(offset, true);
       if (offset + 3 < data.length) sequencerData.stepLength = dataView.getUint8(offset + 2);
       if (offset + 4 < data.length) sequencerData.stepResolution = dataView.getUint8(offset + 3);
       if (offset + 5 < data.length) sequencerData.swing = dataView.getUint8(offset + 4);
       if (offset + 6 < data.length) sequencerData.defaultGateTime = dataView.getUint8(offset + 5);
-      
+
       // Parse step on/off data (16 bits starting at offset + 6)
       if (offset + 8 < data.length) {
         const stepData = dataView.getUint16(offset + 6, true);
@@ -317,7 +374,7 @@ export class BinaryParser {
           sequencerData[`step${i}StepOnOff`] = (stepData & (1 << (i - 1))) !== 0;
         }
       }
-      
+
       // Parse motion on/off data (16 bits starting at offset + 8)
       if (offset + 10 < data.length) {
         const motionData = dataView.getUint16(offset + 8, true);
@@ -325,11 +382,11 @@ export class BinaryParser {
           sequencerData[`step${i}MotionOnOff`] = (motionData & (1 << (i - 1))) !== 0;
         }
       }
-      
+
       // Parse motion slot parameters (simplified - would need full C# structure for complete implementation)
       const motionSlotFields = [
         'motionSlot1Parameter_MotionOnOff',
-        'motionSlot1Parameter_SmoothOnOff', 
+        'motionSlot1Parameter_SmoothOnOff',
         'motionSlot1ParameterId',
         'motionSlot2Parameter_MotionOnOff',
         'motionSlot2Parameter_SmoothOnOff',
@@ -341,7 +398,7 @@ export class BinaryParser {
         'motionSlot4Parameter_SmoothOnOff',
         'motionSlot4ParameterId'
       ];
-      
+
       let motionOffset = offset + 10;
       for (let i = 0; i < motionSlotFields.length && motionOffset < data.length; i++) {
         const field = motionSlotFields[i];
@@ -353,18 +410,18 @@ export class BinaryParser {
           motionOffset += 1;
         }
       }
-      
+
       // Add step data for all 4 motion slots and 16 steps (simplified)
       for (let slot = 1; slot <= 4; slot++) {
         for (let step = 1; step <= 16; step++) {
           sequencerData[`motionSlot${slot}Step${step}OnOff`] = false; // Default to false
         }
       }
-      
+
     } catch (e) {
       // Ignore parsing errors
     }
-    
+
     program.sequencerData = sequencerData;
   }
 
@@ -375,7 +432,7 @@ export class BinaryParser {
       userOscillators[`userOscillator${i}`] = 'USER OSC';
     }
     program.userOscillators = userOscillators;
-    
+
     // Add individual user oscillator fields for compatibility
     for (let i = 1; i <= 16; i++) {
       program[`userOscillator${i}`] = 'USER OSC';
@@ -387,12 +444,12 @@ export class BinaryParser {
     for (let i = 1; i <= 16; i++) {
       program[`userModFx${i}`] = 'USER MOD FX';
     }
-    
+
     // Add user delay effects data (8 slots)
     for (let i = 1; i <= 8; i++) {
       program[`userDelayFx${i}`] = 'USER DELAY FX';
     }
-    
+
     // Add user reverb effects data (8 slots)
     for (let i = 1; i <= 8; i++) {
       program[`userReverbFx${i}`] = 'USER REVERB FX';
