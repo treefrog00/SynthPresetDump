@@ -6,7 +6,7 @@ import { ProgramData } from './program-data';
 class MinillogueXDApp {
   private currentLibraryData: LibraryData | null = null;
   private currentProgramIndex: number = 0;
-  private activeTab: 'svg' | 'json' | 'programs' = 'svg';
+  private activeTab: 'svg' | 'json' | 'library' = 'svg';
 
   constructor() {
     this.initializeEventListeners();
@@ -32,11 +32,11 @@ class MinillogueXDApp {
     // Tab switching
     const svgTab = document.getElementById('svg-tab');
     const jsonTab = document.getElementById('json-tab');
-    const programsTab = document.getElementById('programs-tab');
+    const programsTab = document.getElementById('library-tab');
 
     svgTab?.addEventListener('click', () => this.showTab('svg'));
     jsonTab?.addEventListener('click', () => this.showTab('json'));
-    programsTab?.addEventListener('click', () => this.showTab('programs'));
+            programsTab?.addEventListener('click', () => this.showTab('library'));
   }
 
   private async handleFileSelect(file: File): Promise<void> {
@@ -53,7 +53,7 @@ class MinillogueXDApp {
 
       // Update UI with parsed data
       this.updateDisplay();
-      this.updateProgramsTab();
+      this.updateLibraryTab();
 
       if (statusElement) {
         const programCount = this.currentLibraryData.programs.length;
@@ -74,27 +74,27 @@ class MinillogueXDApp {
     }
   }
 
-  private showTab(tabName: 'svg' | 'json' | 'programs'): void {
+  private showTab(tabName: 'svg' | 'json' | 'library'): void {
     this.activeTab = tabName;
 
     // Update tab buttons
     const svgTab = document.getElementById('svg-tab');
     const jsonTab = document.getElementById('json-tab');
-    const programsTab = document.getElementById('programs-tab');
+    const libraryTab = document.getElementById('library-tab');
 
     svgTab?.classList.toggle('active', tabName === 'svg');
     jsonTab?.classList.toggle('active', tabName === 'json');
-    programsTab?.classList.toggle('active', tabName === 'programs');
+    libraryTab?.classList.toggle('active', tabName === 'library');
 
     // Show/hide content
     const svgContent = document.getElementById('svg-content');
     const jsonContent = document.getElementById('json-content');
-    const programsContent = document.getElementById('programs-content');
+    const libraryContent = document.getElementById('library-content');
 
-    if (svgContent && jsonContent && programsContent) {
+    if (svgContent && jsonContent && libraryContent) {
       svgContent.style.display = tabName === 'svg' ? 'block' : 'none';
       jsonContent.style.display = tabName === 'json' ? 'block' : 'none';
-      programsContent.style.display = tabName === 'programs' ? 'block' : 'none';
+      libraryContent.style.display = tabName === 'library' ? 'block' : 'none';
     }
 
     // Update content if we have data
@@ -136,16 +136,16 @@ class MinillogueXDApp {
     }
   }
 
-  private updateProgramsTab(): void {
+  private updateLibraryTab(): void {
     if (!this.currentLibraryData) return;
 
-    const programsContent = document.getElementById('programs-content');
-    if (!programsContent) return;
+    const libraryContent = document.getElementById('library-content');
+    if (!libraryContent) return;
 
     if (this.currentLibraryData.type === 'single') {
       // Single program - show program info
       const program = this.currentLibraryData.programs[0];
-      programsContent.innerHTML = `
+      libraryContent.innerHTML = `
         <div class="program-info">
           <h3>Program: ${program.programName || 'Untitled'}</h3>
           <p>Single program file loaded</p>
@@ -164,7 +164,7 @@ class MinillogueXDApp {
         `;
       }).join('');
 
-      programsContent.innerHTML = `
+      libraryContent.innerHTML = `
         <div class="programs-header">
           <h3>Library: ${this.currentLibraryData.originalFile.name}</h3>
           <p>${this.currentLibraryData.programs.length} programs</p>
@@ -175,19 +175,48 @@ class MinillogueXDApp {
       `;
 
       // Add click event listeners to program items
-      const programItems = programsContent.querySelectorAll('.program-item');
+      const programItems = libraryContent.querySelectorAll('.program-item');
       programItems.forEach((item, index) => {
         item.addEventListener('click', () => this.selectProgram(index));
       });
     }
   }
 
+  private updateProgramActiveState(): void {
+    if (!this.currentLibraryData || this.currentLibraryData.type === 'single') return;
+
+    const libraryContent = document.getElementById('library-content');
+    if (!libraryContent) return;
+
+    // Update only the active state of program items without regenerating HTML
+    const programItems = libraryContent.querySelectorAll('.program-item');
+    programItems.forEach((item, index) => {
+      if (index === this.currentProgramIndex) {
+        item.classList.add('active');
+      } else {
+        item.classList.remove('active');
+      }
+    });
+  }
+
   private selectProgram(index: number): void {
     if (!this.currentLibraryData || index < 0 || index >= this.currentLibraryData.programs.length) return;
 
+    // Preserve scroll position before updating
+    const libraryContent = document.getElementById('library-content');
+    const programsList = libraryContent?.querySelector('.programs-list');
+    const scrollTop = programsList?.scrollTop || 0;
+
     this.currentProgramIndex = index;
-    this.updateProgramsTab();
+
+    // Update only the active state without regenerating the entire HTML
+    this.updateProgramActiveState();
     this.updateDisplay();
+
+    // Restore scroll position after updating
+    if (programsList) {
+      programsList.scrollTop = scrollTop;
+    }
   }
 
   private escapeHtml(text: string): string {

@@ -86,6 +86,8 @@ function compareJsonFiles(expectedPath: string, actualPath: string): void {
 
     const keysToCompare = ["program"];
 
+    let allMatch = true;
+
     for (const key in normalizedExpected) {
         if (!keysToCompare.includes(key)) {
             console.log("skipping " + key);
@@ -94,7 +96,13 @@ function compareJsonFiles(expectedPath: string, actualPath: string): void {
         const actualValue = normalizedActual[key];
         const expectedValue = normalizedExpected[key];
 
-        compareJsonKeys(expectedValue, actualValue);
+        allMatch = allMatch && compareJsonKeys(expectedValue, actualValue);
+    }
+
+    if (allMatch) {
+        console.log("   ✅ All JSON keys match exactly");
+    } else {
+        console.log("   ⚠️  Some JSON keys differ");
     }
 }
 
@@ -161,7 +169,7 @@ function compareObjectKeys(expectedChild: any, actualChild: any, key: string, cu
     }
 
     // Check if the child objects match exactly
-    if (JSON.stringify(expectedChild) === JSON.stringify(actualChild)) {
+    if (JSON.stringify(expectedChild) !== JSON.stringify(actualChild)) {
         console.log(`   ✅ ${key} matches exactly`);
     } else {
         console.log(`   ⚠️  ${key} differs`);
@@ -173,30 +181,10 @@ function compareObjectKeys(expectedChild: any, actualChild: any, key: string, cu
 
 function comparePrimitiveValues(expectedChild: any, actualChild: any, key: string, currentMatch: boolean): boolean {
     if (expectedChild === actualChild) {
-        console.log(`   ✅ ${key} matches exactly`);
         return currentMatch;
     } else {
         console.log(`   ⚠️  ${key} differs`);
         return false;
-    }
-}
-
-function compareSvgFiles(expectedPath: string, actualPath: string): void {
-    const expected = fs.readFileSync(expectedPath, 'utf8');
-    const actual = fs.readFileSync(actualPath, 'utf8');
-
-    console.log(`📊 SVG Comparison:`);
-    console.log(`   Expected size: ${expected.length} characters`);
-    console.log(`   Actual size: ${actual.length} characters`);
-
-    if (expected === actual) {
-        console.log('   ✅ Files match exactly');
-    } else {
-        console.log('   ⚠️  Files differ');
-
-        // Show similarity percentage
-        const similarity = calculateSimilarity(expected, actual);
-        console.log(`   📊 Similarity: ${similarity.toFixed(1)}%`);
     }
 }
 
