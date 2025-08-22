@@ -140,8 +140,8 @@ export class SvgGenerator {
 
     elements.push('<g>');
 
-    // Options (in reverse order to match Python code)
-    for (let i = options.length - 1; i >= 0; i--) {
+    // Options (in forward order to match C# output)
+    for (let i = 0; i < options.length; i++) {
       const option = options[i];
       if (option) {
         const fill = i === selectedIndex ? this.SWITCH_ACTIVE_COLOR : "transparent";
@@ -360,7 +360,6 @@ export class SvgGenerator {
 
     const octaveOptions = ["16'", "8'", "4'", "2'"];
     elements.push(...this.createSwitch("OCTAVE", x + 100, this.FIRST_ROW_Y, programData.vco1Octave, octaveOptions));
-    elements.push('</g>');
     // VCO 2
 
     elements.push('<g>');
@@ -733,7 +732,9 @@ export class SvgGenerator {
   }
 
   private static percent1023String(value: number): string {
-    return `${this.percentFromValue(value, 0, 1023).toFixed(2)}%`;
+    const percent = this.percentFromValue(value, 0, 1023);
+    // Format like C# - show no decimals for integers, up to 2 decimals for non-integers
+    return percent % 1 === 0 ? `${percent}%` : `${percent.toFixed(2)}%`;
   }
 
   private static pitchCents(value: number): string {
