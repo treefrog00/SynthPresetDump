@@ -361,7 +361,13 @@ export class SvgGenerator {
     elements.push(...this.createKnob(`SHAPE\nRaw: ${programData.vco2Shape}\n(${this.percent1023String(programData.vco2Shape)})`, x + 355, secondRowY, shape2Percent));
 
     const crossModPercent = this.percentFromValue(programData.crossModDepth, 0, 1023);
-    elements.push(...this.createKnob(`CROSS MOD DEPTH ${crossModPercent.toFixed(1)}%`, x + 510, secondRowY, crossModPercent));
+    const crossModLabel = [
+      "CROSS MOD",
+      "DEPTH",
+      `Raw: ${programData.crossModDepth}`,
+      `(${this.percent1023String(programData.crossModDepth)})`
+    ].join('\n');
+    elements.push(...this.createKnob(crossModLabel, x + 510, secondRowY, crossModPercent));
 
     // VCO 2 wave and octave switches
     elements.push('<g>');
@@ -373,7 +379,6 @@ export class SvgGenerator {
     const syncOptions = ["Off", "On"];
     elements.push(...this.createSwitch("SYNC", x + 490, this.FIRST_ROW_Y, programData.oscillatorSync ? 1 : 0, syncOptions));
     elements.push(...this.createSwitch("RING", x + 580, this.FIRST_ROW_Y, programData.ringMod ? 1 : 0, syncOptions));
-    elements.push('</g>');
 
     // Add divider line
     elements.push(...this.createDividerLine(x + 650));
