@@ -140,8 +140,8 @@ export class SvgGenerator {
 
     elements.push('<g>');
 
-    // Options (in forward order to match C# output)
-    for (let i = 0; i < options.length; i++) {
+    // Options (in reverse order to match C# code)
+    for (let i = options.length - 1; i >= 0; i--) {
       const option = options[i];
       if (option) {
         const fill = i === selectedIndex ? this.SWITCH_ACTIVE_COLOR : "transparent";
@@ -355,11 +355,13 @@ export class SvgGenerator {
     elements.push('</g>');
 
     // VCO 1 wave and octave switches
+    elements.push('<g>');
     const waveOptions = ["SQR", "TRI", "SAW"];
     elements.push(...this.createSwitch("WAVE", x, this.FIRST_ROW_Y, programData.vco1Wave, waveOptions));
 
     const octaveOptions = ["16'", "8'", "4'", "2'"];
     elements.push(...this.createSwitch("OCTAVE", x + 100, this.FIRST_ROW_Y, programData.vco1Octave, octaveOptions));
+    elements.push('</g>');
     // VCO 2
 
     elements.push('<g>');
