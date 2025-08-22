@@ -40,6 +40,158 @@ export class SvgGenerator {
     return formatted;
   }
 
+  private static formatAssignTarget(assignTarget: number): string {
+    // Format AssignTarget enum values to match C# version
+    switch (assignTarget) {
+      case Enums.AssignTarget.VCO1_SHAPE:
+        return "Vco1Shape";
+      case Enums.AssignTarget.FILTER_CUTOFF:
+        return "FilterCutoff";
+      case Enums.AssignTarget.GATE_TIME:
+        return "GateTime";
+      default:
+        return Enums.AssignTarget[assignTarget] || assignTarget.toString();
+    }
+  }
+
+  private static formatUserParamValue(type: Enums.UserParamType, value: number): string {
+    if (type === Enums.UserParamType.PERCENT_BIPOLAR) {
+      const signed = value - 100;
+      return `${signed}%`;
+    } else if (type === Enums.UserParamType.PERCENT_TYPE) {
+      return `${value}%`;
+    } else if (type === Enums.UserParamType.SELECT || type === Enums.UserParamType.COUNT) {
+      return value.toString();
+    }
+    return value.toString();
+  }
+
+  private static getMultiEngineProgramEditLabel(programData: ProgramData): string {
+    const octaveStr = ["16'", "8'", "4'", "2'"][programData.multiOctave] || `??? (Raw: ${programData.multiOctave})`;
+    return `\n**Program Edit / Other\nMulti Octave: ${octaveStr}\nMulti Routing: ${programData.multiRouting === Enums.MultiRouting.PRE_VCF ? "PreVCF" : "PostVCF"}`;
+  }
+
+  private static createMultiEngineUserSection(programData: ProgramData, x: number): { elements: string[], title: string } {
+    const elements: string[] = [];
+    const title = `User (#${programData.selectedMultiOscUser + 1})`;
+
+    elements.push('<g>');
+
+    // SHIFT+SHAPE
+    const shiftShapePercent = this.percentFromValue(programData.shiftShapeUser, 0, 1023);
+    elements.push(...this.createKnob(`SHIFT+SHAPE\nRaw: ${programData.shiftShapeUser}`, x + 355, this.FIRST_ROW_Y + this.ROW_SPACING * 2 + 20, shiftShapePercent));
+
+    // SHAPE
+    const shapePercent = this.percentFromValue(programData.shapeUser, 0, 1023);
+    elements.push(...this.createKnob(`SHAPE\nRaw: ${programData.shapeUser}`, x + 510, this.FIRST_ROW_Y + this.ROW_SPACING * 2 + 20, shapePercent));
+
+    // User parameters (using generic labels for now since we don't have userOscillatorDescriptions.json)
+    const userParams = [
+      "**Program Edit / Multi Engine",
+      `Param 1: ${this.formatUserParamValue(programData.userParam1Type, programData.userParam1)}`,
+      `Param 2: ${this.formatUserParamValue(programData.userParam2Type, programData.userParam2)}`,
+      `Param 3: ${this.formatUserParamValue(programData.userParam3Type, programData.userParam3)}`,
+      `Param 4: ${this.formatUserParamValue(programData.userParam4Type, programData.userParam4)}`,
+      `Param 5: ${this.formatUserParamValue(programData.userParam5Type, programData.userParam5)}`,
+      `Param 6: ${this.formatUserParamValue(programData.userParam6Type, programData.userParam6)}`,
+      this.getMultiEngineProgramEditLabel(programData)
+    ];
+
+    userParams.forEach((line, index) => {
+      const yPos = this.FIRST_ROW_Y + this.ROW_SPACING * 2 + 40 + (index * 20);
+      const fontWeight = line.startsWith('**') ? 'bold' : 'normal';
+      const cleanedLine = line.startsWith('**') ? line.substring(2) : line;
+      elements.push(this.createText(cleanedLine, x + 80, yPos, "1.2em", fontWeight, "start"));
+    });
+
+    elements.push('</g>');
+    return { elements, title };
+  }
+
+  private static createMultiEngineVPMSection(programData: ProgramData, x: number): { elements: string[], title: string } {
+    const elements: string[] = [];
+    const title = `VPM / ${Enums.MultiOscVPM[programData.selectedMultiOscVpm] || programData.selectedMultiOscVpm}`;
+
+    elements.push('<g>');
+
+    // SHAPE: MOD DEPTH
+    const shapePercent = this.percentFromValue(programData.shapeVpm, 0, 1023);
+    elements.push(...this.createKnob(`SHAPE\nMOD DEPTH\nRaw: ${programData.shapeVpm}\n(${this.percent1023String(programData.shapeVpm)})`, x + 510, this.FIRST_ROW_Y + this.ROW_SPACING * 2 + 20, shapePercent));
+
+    // SHIFT+SHAPE: RATIO OFFSET
+    const shiftShapePercent = this.percentFromValue(programData.shiftShapeVpm, 0, 1023);
+    elements.push(...this.createKnob(`SHIFT+SHAPE\nRATIO OFFSET\nRaw: ${programData.shiftShapeVpm}\n(${this.percent1023String(programData.shiftShapeVpm)})`, x + 355, this.FIRST_ROW_Y + this.ROW_SPACING * 2 + 20, shiftShapePercent));
+
+    // VPM settings
+    const vpmSettings = [
+      "**Program Edit / Multi Engine",
+      `Feedback: ${DisplayHelper.minusToPlus100String(programData.vpmParameter1Feedback)}`,
+      `Noise Depth: ${DisplayHelper.minusToPlus100String(programData.vpmParameter2NoiseDepth)}`,
+      `Shape Mod Int: ${DisplayHelper.minusToPlus100String(programData.vpmParameter3ShapeModInt)}`,
+      `Mod Attack: ${DisplayHelper.minusToPlus100String(programData.vpmParameter4ModAttack)}`,
+      `Mod Decay: ${DisplayHelper.minusToPlus100String(programData.vpmParameter5ModDecay)}`,
+      `Mod Key Track: ${DisplayHelper.minusToPlus100String(programData.vpmParameter6ModKeyTrack)}`,
+      this.getMultiEngineProgramEditLabel(programData)
+    ];
+
+    vpmSettings.forEach((line, index) => {
+      const yPos = this.FIRST_ROW_Y + this.ROW_SPACING * 2 + 40 + (index * 20);
+      const fontWeight = line.startsWith('**') ? 'bold' : 'normal';
+      const cleanedLine = line.startsWith('**') ? line.substring(2) : line;
+      elements.push(this.createText(cleanedLine, x + 80, yPos, "1.2em", fontWeight, "start"));
+    });
+
+    elements.push('</g>');
+    return { elements, title };
+  }
+
+  private static createMultiEngineNoiseSection(programData: ProgramData, x: number): { elements: string[], title: string } {
+    const elements: string[] = [];
+    const title = `Noise / ${this.formatEnumForDisplay(Enums.MultiOscNoise[programData.selectedMultiOscNoise]) || programData.selectedMultiOscNoise}`;
+
+    elements.push('<g>');
+
+    // Determine shape label based on noise type
+    let shapeLabel: string;
+    if (programData.selectedMultiOscNoise === Enums.MultiOscNoise.DECIM) {
+      // SHIFT+SHAPE: KEY TRACK
+      const shiftShapePercent = this.percentFromValue(programData.shiftShapeNoise, 0, 1023);
+      elements.push(...this.createKnob(`SHIFT+SHAPE\nKEY TRACK\nRaw: ${programData.shiftShapeNoise}\n(${this.percent1023String(programData.shiftShapeNoise)})`, x + 355, this.FIRST_ROW_Y + this.ROW_SPACING * 2 + 20, shiftShapePercent));
+
+      // SHAPE: RATE [240Hz...48.0kHz]
+      shapeLabel = "RATE";
+    } else if (programData.selectedMultiOscNoise === Enums.MultiOscNoise.PEAK) {
+      // SHAPE: BANDWIDTH [110.0Hz...880.0Hz]
+      shapeLabel = "BANDWIDTH";
+    } else {
+      // SHAPE: CUTOFF [10.0Hz...21.0kHz]
+      shapeLabel = "CUTOFF";
+    }
+
+    // SHAPE knob
+    const shapePercent = this.percentFromValue(programData.shapeNoise, 0, 1023);
+    elements.push(...this.createKnob(`SHAPE\n${shapeLabel}\nRaw: ${programData.shapeNoise}\n(${this.percent1023String(programData.shapeNoise)})`, x + 510, this.FIRST_ROW_Y + this.ROW_SPACING * 2 + 20, shapePercent));
+
+    // Program Edit information
+    const noiseSettings = this.getMultiEngineProgramEditLabel(programData);
+    const lines = noiseSettings.split('\n');
+    let lineIndex = 0;
+    elements.push('<g>');
+    lines.forEach((line) => {
+      if (line.trim()) {
+        const yPos = this.FIRST_ROW_Y + this.ROW_SPACING * 2 + 20 + (lineIndex * 20);
+        const fontWeight = line.startsWith('**') ? 'bold' : 'normal';
+        const cleanedLine = line.startsWith('**') ? line.substring(2) : line;
+        elements.push(this.createText(cleanedLine, x + 80, yPos, "1.2em", fontWeight, "start"));
+        lineIndex++;
+      }
+    });
+    elements.push('</g>');
+
+    elements.push('</g>');
+    return { elements, title };
+  }
+
   static generate(programData: ProgramData): string {
     const viewboxWidth = this.SYNTH_WIDTH + this.PADDING * 2;
     const viewboxHeight = this.SYNTH_HEIGHT + this.PADDING * 2;
@@ -75,13 +227,28 @@ export class SvgGenerator {
 
     svgElements.push('</svg>');
 
-    return svgElements.join('\n');
+    return this.formatWithIndentation(svgElements);
   }
 
   private static createText(text: string, x: number, y: number, fontSize: string = "1.2em", fontWeight: string = "normal", textAnchor: string = "start"): string {
-    const escapedText = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    const fontWeightAttr = fontWeight !== "normal" ? ` font-weight="${fontWeight}"` : "";
-    return `<text x="${x}" y="${y}" dominant-baseline="hanging" text-anchor="${textAnchor}" font-family="Arial, sans-serif" font-size="${fontSize}"${fontWeightAttr} fill="${this.STROKE_COLOR}">${escapedText}</text>`;
+    // Handle newlines by creating multiple text elements
+    if (text.includes('\n')) {
+      const lines = text.split('\n');
+      const elements: string[] = [];
+      elements.push('<g>');
+      lines.forEach((line, index) => {
+        const yPos = y + (index * 20);
+        const escapedLine = line.trim().replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        const fontWeightAttr = fontWeight !== "normal" ? ` font-weight="${fontWeight}"` : "";
+        elements.push(`<text x="${x}" y="${yPos}" dominant-baseline="hanging" text-anchor="${textAnchor}" font-family="Arial, sans-serif" font-size="${fontSize}"${fontWeightAttr} fill="${this.STROKE_COLOR}">${escapedLine}</text>`);
+      });
+      elements.push('</g>');
+      return elements.join('');
+    } else {
+      const escapedText = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      const fontWeightAttr = fontWeight !== "normal" ? ` font-weight="${fontWeight}"` : "";
+      return `<text x="${x}" y="${y}" dominant-baseline="hanging" text-anchor="${textAnchor}" font-family="Arial, sans-serif" font-size="${fontSize}"${fontWeightAttr} fill="${this.STROKE_COLOR}">${escapedText}</text>`;
+    }
   }
 
   private static createLogo(x: number, y: number): string[] {
@@ -119,7 +286,6 @@ export class SvgGenerator {
     // Group for knob labels (to match C# structure)
     if (label) {
       elements.push('<g>');
-
       // Split label into separate lines and create individual text elements
       const lines = label.split('\n');
       lines.forEach((line, index) => {
@@ -127,7 +293,6 @@ export class SvgGenerator {
         // Include empty lines to match C# structure
         elements.push(this.createText(line.trim(), cx, yPos, "1.2em", "normal", "middle"));
       });
-
       elements.push('</g>');
     }
 
@@ -175,7 +340,17 @@ export class SvgGenerator {
     // Main label
     if (label) {
       const labelX = cx + this.LED_RADIUS + 8;
-      elements.push(this.createText(label, labelX, currentY - 8, "1.2em", "normal", "middle"));
+      if (label.includes('\n')) {
+        elements.push('<g>');
+        const lines = label.split('\n');
+        lines.forEach((line, index) => {
+          const yPos = currentY - 8 + (index * 20);
+          elements.push(this.createText(line.trim(), labelX, yPos, "1.2em", "normal", "middle"));
+        });
+        elements.push('</g>');
+      } else {
+        elements.push(this.createText(label, labelX, currentY - 8, "1.2em", "normal", "middle"));
+      }
     }
 
     elements.push('</g>');
@@ -399,64 +574,24 @@ export class SvgGenerator {
     const multiOscTypes = ["Noise", "VPM", "USR"];
     elements.push(...this.createSwitch("", x, this.FIRST_ROW_Y + this.ROW_SPACING * 2 + 20, programData.multiOscType, multiOscTypes));
 
-    // Multi Engine Title
+    // Multi Engine knobs - create separate group for each type like C# does
     let title = "???";
     if (programData.multiOscType === Enums.MultiOscType.USER) {
-      title = `User (#${programData.selectedMultiOscUser + 1})`;
+      const { elements: userElements, title: userTitle } = this.createMultiEngineUserSection(programData, x);
+      elements.push(...userElements);
+      title = userTitle;
     } else if (programData.multiOscType === Enums.MultiOscType.VPM) {
-      title = `VPM / ${Enums.MultiOscVPM[programData.selectedMultiOscVpm] || programData.selectedMultiOscVpm}`;
+      const { elements: vpmElements, title: vpmTitle } = this.createMultiEngineVPMSection(programData, x);
+      elements.push(...vpmElements);
+      title = vpmTitle;
     } else if (programData.multiOscType === Enums.MultiOscType.NOISE) {
-      title = `Noise / ${this.formatEnumForDisplay(Enums.MultiOscNoise[programData.selectedMultiOscNoise]) || programData.selectedMultiOscNoise}`;
+      const { elements: noiseElements, title: noiseTitle } = this.createMultiEngineNoiseSection(programData, x);
+      elements.push(...noiseElements);
+      title = noiseTitle;
     }
 
+    // Multi Engine Title
     elements.push(this.createText(`MULTI ENGINE: ${title}`, x + 315, this.FIRST_ROW_Y + this.ROW_SPACING * 2 + 20 - this.HEADER_OFFSET, "1.6em", "bold", "middle"));
-
-    // Program Edit information for Multi Engine
-    const multiEditInfo = [
-      "**Program Edit / Other",
-      `Multi Octave: ${["16'", "8'", "4'", "2'"][programData.multiOscOctave] || "8'"}`,
-      `Multi Routing: ${programData.multiRouting === Enums.MultiRouting.PRE_VCF ? "PreVCF" : "PostVCF"}`
-    ];
-
-    multiEditInfo.forEach((line, index) => {
-      const yPos = this.FIRST_ROW_Y + this.ROW_SPACING * 2 + 40 + (index * 20);
-      const fontWeight = line.startsWith('**') ? 'bold' : 'normal';
-      const cleanedLine = line.startsWith('**') ? line.substring(2) : line;
-      elements.push(this.createText(cleanedLine, x + 80, yPos, "1.2em", fontWeight, "start"));
-    });
-
-    // Multi Engine Knobs based on type
-    if (programData.multiOscType === Enums.MultiOscType.USER) {
-      // User oscillator knobs
-      const shiftShapePercent = this.percentFromValue(programData.shiftShapeUser, 0, 1023);
-      elements.push(...this.createKnob(`SHIFT+SHAPE\nRaw: ${programData.shiftShapeUser}\n(${this.percent1023String(programData.shiftShapeUser)})`, x + 355, this.FIRST_ROW_Y + this.ROW_SPACING * 2 + 20, shiftShapePercent));
-
-      const shapePercent = this.percentFromValue(programData.shapeUser, 0, 1023);
-      elements.push(...this.createKnob(`SHAPE\nRaw: ${programData.shapeUser}\n(${this.percent1023String(programData.shapeUser)})`, x + 510, this.FIRST_ROW_Y + this.ROW_SPACING * 2 + 20, shapePercent));
-    } else if (programData.multiOscType === Enums.MultiOscType.VPM) {
-      // VPM oscillator knobs
-      const shapePercent = this.percentFromValue(programData.shapeVpm, 0, 1023);
-      elements.push(...this.createKnob(`SHAPE\nMOD DEPTH\nRaw: ${programData.shapeVpm}\n(${this.percent1023String(programData.shapeVpm)})`, x + 510, this.FIRST_ROW_Y + this.ROW_SPACING * 2 + 20, shapePercent));
-
-      const shiftShapePercent = this.percentFromValue(programData.shiftShapeVpm, 0, 1023);
-      elements.push(...this.createKnob(`SHIFT+SHAPE\nRATIO OFFSET\nRaw: ${programData.shiftShapeVpm}\n(${this.percent1023String(programData.shiftShapeVpm)})`, x + 355, this.FIRST_ROW_Y + this.ROW_SPACING * 2 + 20, shiftShapePercent));
-    } else if (programData.multiOscType === Enums.MultiOscType.NOISE) {
-      // Noise oscillator knobs (SHAPE first to match C# order)
-      const shapePercent = this.percentFromValue(programData.shapeNoise, 0, 1023);
-      let shapeLabel = "RATE";
-      if (programData.selectedMultiOscNoise === Enums.MultiOscNoise.PEAK) {
-        shapeLabel = "BANDWIDTH";
-      } else if (programData.selectedMultiOscNoise !== Enums.MultiOscNoise.DECIM) {
-        shapeLabel = "CUTOFF";
-      }
-      elements.push(...this.createKnob(`SHAPE\n${shapeLabel}\nRaw: ${programData.shapeNoise}\n(${this.percent1023String(programData.shapeNoise)})`, x + 510, this.FIRST_ROW_Y + this.ROW_SPACING * 2 + 20, shapePercent));
-
-      const shiftShapePercent = this.percentFromValue(programData.shiftShapeNoise, 0, 1023);
-      elements.push(...this.createKnob(`SHIFT+SHAPE\nKEY TRACK\nRaw: ${programData.shiftShapeNoise}\n(${this.percent1023String(programData.shiftShapeNoise)})`, x + 355, this.FIRST_ROW_Y + this.ROW_SPACING * 2 + 20, shiftShapePercent));
-    }
-
-    // Add vertical divider line
-    elements.push(`<line stroke="${this.STROKE_COLOR}" stroke-width="2" x1="${x + 650}" y1="${this.FIRST_ROW_Y}" x2="${x + 650}" y2="${this.SYNTH_HEIGHT - 100}" />`);
 
     // Close outer group wrapper
     elements.push('</g>');
@@ -473,13 +608,13 @@ export class SvgGenerator {
     elements.push(this.createText("MIXER", x + this.KNOB_RADIUS, this.FIRST_ROW_Y - this.HEADER_OFFSET, "1.6em", "bold", "middle"));
 
     const vco1Percent = this.percentFromValue(programData.vco1Level, 0, 1023);
-    elements.push(...this.createKnob(`VCO 1 ${vco1Percent.toFixed(1)}%`, x, this.FIRST_ROW_Y, vco1Percent));
+    elements.push(...this.createKnob(`VCO 1\nRaw: ${programData.vco1Level}\n(${this.percent1023String(programData.vco1Level)})`, x, this.FIRST_ROW_Y, vco1Percent));
 
     const vco2Percent = this.percentFromValue(programData.vco2Level, 0, 1023);
-    elements.push(...this.createKnob(`VCO 2 ${vco2Percent.toFixed(1)}%`, x, this.FIRST_ROW_Y + this.ROW_SPACING, vco2Percent));
+    elements.push(...this.createKnob(`VCO 2\nRaw: ${programData.vco2Level}\n(${this.percent1023String(programData.vco2Level)})`, x, this.FIRST_ROW_Y + this.ROW_SPACING, vco2Percent));
 
     const multiPercent = this.percentFromValue(programData.multiLevel, 0, 1023);
-    elements.push(...this.createKnob(`MULTI\nRaw: ${programData.multiLevel}\n(${this.percent1023String(programData.multiLevel)})`, x, this.FIRST_ROW_Y + this.ROW_SPACING * 2, multiPercent));
+    elements.push(...this.createKnob(`MULTI\nRaw: ${programData.multiLevel}\n(${this.percent1023String(programData.multiLevel)})`, x, this.FIRST_ROW_Y + this.ROW_SPACING * 2 + 20, multiPercent));
 
     // Add divider line
     elements.push(...this.createDividerLine(x + 90));
@@ -499,15 +634,15 @@ export class SvgGenerator {
     elements.push(this.createText("FILTER", x + this.KNOB_RADIUS, this.FIRST_ROW_Y - this.HEADER_OFFSET, "1.6em", "bold", "middle"));
 
     const cutoffPercent = this.percentFromValue(programData.filterCutoff, 0, 1023);
-    elements.push(...this.createKnob(`CUTOFF ${cutoffPercent.toFixed(1)}%`, x, this.FIRST_ROW_Y, cutoffPercent));
+    elements.push(...this.createKnob(`CUTOFF\nRaw: ${programData.filterCutoff}\n(${this.percent1023String(programData.filterCutoff)})`, x, this.FIRST_ROW_Y, cutoffPercent));
 
     const resonancePercent = this.percentFromValue(programData.filterResonance, 0, 1023);
-    elements.push(...this.createKnob(`RESONANCE ${resonancePercent.toFixed(1)}%`, x, this.FIRST_ROW_Y + this.ROW_SPACING, resonancePercent));
+    elements.push(...this.createKnob(`RESONANCE\nRaw: ${programData.filterResonance}\n(${this.percent1023String(programData.filterResonance)})`, x, this.FIRST_ROW_Y + this.ROW_SPACING, resonancePercent));
 
     // Drive and Key Track switches
     const driveOptions = ["0%", "50%", "100%"];
-    elements.push(...this.createSwitch("DRIVE", x - this.KNOB_RADIUS - 5, this.FIRST_ROW_Y + this.ROW_SPACING * 2, programData.filterCutoffDrive, driveOptions));
-    elements.push(...this.createSwitch("KEY TRACK", x + this.KNOB_RADIUS + 5, this.FIRST_ROW_Y + this.ROW_SPACING * 2, programData.filterCutoffKeyboardTrack, driveOptions));
+    elements.push(...this.createSwitch("DRIVE", x - this.KNOB_RADIUS - 5, this.FIRST_ROW_Y + this.ROW_SPACING * 2 + 20, programData.filterCutoffDrive, driveOptions));
+    elements.push(...this.createSwitch("KEY\nTRACK", x + this.KNOB_RADIUS + 5, this.FIRST_ROW_Y + this.ROW_SPACING * 2 + 20, programData.filterCutoffKeyboardTrack, driveOptions));
 
     // Add divider line
     elements.push(...this.createDividerLine(x + 125));
@@ -529,16 +664,16 @@ export class SvgGenerator {
     elements.push(this.createText("AMP EG", x + 220, this.FIRST_ROW_Y - this.HEADER_OFFSET, "1.6em", "bold", "middle"));
 
     const ampAttackPercent = this.percentFromValue(programData.ampEgAttack, 0, 1023);
-    elements.push(...this.createKnob(`ATTACK ${ampAttackPercent.toFixed(1)}%`, x, this.FIRST_ROW_Y, ampAttackPercent));
+    elements.push(...this.createKnob(`ATTACK\nRaw: ${programData.ampEgAttack}`, x, this.FIRST_ROW_Y, ampAttackPercent));
 
     const ampDecayPercent = this.percentFromValue(programData.ampEgDecay, 0, 1023);
-    elements.push(...this.createKnob(`DECAY ${ampDecayPercent.toFixed(1)}%`, x + spacing, this.FIRST_ROW_Y, ampDecayPercent));
+    elements.push(...this.createKnob(`DECAY\nRaw: ${programData.ampEgDecay}`, x + spacing, this.FIRST_ROW_Y, ampDecayPercent));
 
     const ampSustainPercent = this.percentFromValue(programData.ampEgSustain, 0, 1023);
-    elements.push(...this.createKnob(`SUSTAIN ${ampSustainPercent.toFixed(1)}%`, x + spacing * 2, this.FIRST_ROW_Y, ampSustainPercent));
+    elements.push(...this.createKnob(`SUSTAIN\nRaw: ${programData.ampEgSustain}`, x + spacing * 2, this.FIRST_ROW_Y, ampSustainPercent));
 
     const ampReleasePercent = this.percentFromValue(programData.ampEgRelease, 0, 1023);
-    elements.push(...this.createKnob(`RELEASE ${ampReleasePercent.toFixed(1)}%`, x + spacing * 3, this.FIRST_ROW_Y, ampReleasePercent));
+    elements.push(...this.createKnob(`RELEASE\nRaw: ${programData.ampEgRelease}`, x + spacing * 3, this.FIRST_ROW_Y, ampReleasePercent));
 
     // Amp EG Program Edit Information
     const ampEgProgramEditInfo = [
@@ -555,28 +690,27 @@ export class SvgGenerator {
     elements.push(this.createText("EG", x + 220, secondRowY - this.HEADER_OFFSET, "1.6em", "bold", "middle"));
 
     const egAttackPercent = this.percentFromValue(programData.egAttack, 0, 1023);
-    elements.push(...this.createKnob(`ATTACK ${egAttackPercent.toFixed(1)}%`, x, secondRowY, egAttackPercent));
+    elements.push(...this.createKnob(`ATTACK\nRaw: ${programData.egAttack}`, x, secondRowY, egAttackPercent));
 
     const egDecayPercent = this.percentFromValue(programData.egDecay, 0, 1023);
-    elements.push(...this.createKnob(`DECAY ${egDecayPercent.toFixed(1)}%`, x + spacing, secondRowY, egDecayPercent));
+    elements.push(...this.createKnob(`DECAY\nRaw: ${programData.egDecay}`, x + spacing, secondRowY, egDecayPercent));
 
     const egIntPercent = this.percentFromValue(programData.egInt, 0, 1023);
-    elements.push(...this.createKnob(`EG INT\n${egIntPercent.toFixed(1)}%\nRaw: ${programData.egInt}`, x + spacing * 2, secondRowY, egIntPercent));
+    const egIntPercentValue = DisplayHelper.egIntPercent(programData.egInt);
+    // Format EG INT percentage to match C# version (remove decimal for whole numbers)
+    const egIntDisplay = Math.abs(egIntPercentValue) < 0.1 ? "0%" : `${egIntPercentValue.toFixed(1)}%`;
+    elements.push(...this.createKnob(`EG INT\n${egIntDisplay}\nRaw: ${programData.egInt}`, x + spacing * 2, secondRowY, egIntPercent));
 
     // EG Target switch
     const egTargets = ["Cutoff", "Pitch 2", "Pitch"];
     elements.push(...this.createSwitch("TARGET", x + spacing * 3, secondRowY, programData.egTarget, egTargets));
 
-    // EG Program Edit Information
-    const egProgramEditInfo = [
-      `Program Edit / Modulation / EG Cutoff Velocity: ${programData.cutoffVelocity}`,
-      `Program Edit / Other / EG Legato: ${programData.egLegato ? "On" : "Off"}`
-    ];
-
-    egProgramEditInfo.forEach((line, index) => {
-      const yPos = secondRowY + this.KNOB_DIAMETER + 110 + (index * 20);
-      elements.push(this.createText(line, x, yPos, "1.2em", "normal", "start"));
-    });
+    // EG Program Edit Information - create separate text elements to match C# structure
+    const egProgramEditY = secondRowY + this.KNOB_DIAMETER + 110;
+    elements.push('<g>');
+    elements.push(this.createText(`Program Edit / Modulation / EG Cutoff Velocity: ${programData.cutoffVelocity}`, x, egProgramEditY, "1.2em", "normal", "start"));
+    elements.push(this.createText(`Program Edit / Other / EG Legato: ${programData.egLegato ? "On" : "Off"}`, x, egProgramEditY + 20, "1.2em", "normal", "start"));
+    elements.push('</g>');
 
 
 
@@ -605,7 +739,8 @@ export class SvgGenerator {
 
     // LFO Rate Knob
     const lfoRatePercent = this.percentFromValue(programData.lfoRate, 0, 1023);
-    elements.push(...this.createKnob(`RATE\n${lfoRatePercent.toFixed(1)}%\nRaw: ${programData.lfoRate}`, x + 200, this.FIRST_ROW_Y + this.ROW_SPACING * 2 + 20, lfoRatePercent));
+    const lfoRateString = DisplayHelper.lfoRate(programData.lfoRate, programData.lfoMode);
+    elements.push(...this.createKnob(`RATE\n${lfoRateString}\nRaw: ${programData.lfoRate}`, x + 200, this.FIRST_ROW_Y + this.ROW_SPACING * 2 + 20, lfoRatePercent));
 
     // LFO Int Knob
     const lfoIntPercent = this.percentFromValue(programData.lfoInt, 0, 1023);
@@ -615,10 +750,11 @@ export class SvgGenerator {
     const lfoTargets = ["Cutoff", "Shape", "Pitch"];
     elements.push(...this.createSwitch("TARGET", x + 400, this.FIRST_ROW_Y + this.ROW_SPACING * 2 + 20, programData.lfoTarget, lfoTargets));
 
-    // LFO Program Edit Information
+    // LFO Program Edit Information - wrap in group to match C# structure
+    elements.push('<g>');
     const lfoProgramEditInfo = [
       "**Program Edit / LFO",
-      `LFO Target Osc: ${programData.lfoTargetOsc}`,
+      `LFO Target Osc: ${programData.lfoTargetOsc === 0 ? "All" : programData.lfoTargetOsc}`,
       `LFO Key Sync: ${programData.lfoKeySync ? "On" : "Off"}`,
       `LFO Voice Sync: ${programData.lfoVoiceSync ? "On" : "Off"}`
     ];
@@ -629,6 +765,7 @@ export class SvgGenerator {
       const cleanedLine = line.startsWith('**') ? line.substring(2) : line;
       elements.push(this.createText(cleanedLine, x, yPos, "1.2em", fontWeight, "start"));
     });
+    elements.push('</g>');
 
     // Close outer group wrapper
     elements.push('</g>');
@@ -636,9 +773,11 @@ export class SvgGenerator {
     return elements;
   }
 
-  private static createDividerLine(y: number): string[] {
+  private static createDividerLine(x: number): string[] {
     const elements: string[] = [];
-    elements.push(`<line stroke="${this.STROKE_COLOR}" stroke-width="2" x1="0" y1="${y}" x2="${this.SYNTH_WIDTH}" y2="${y}" />`);
+    const lineY1 = this.FIRST_ROW_Y;
+    const lineY2 = this.SYNTH_HEIGHT - 100;
+    elements.push(`<line stroke="${this.STROKE_COLOR}" stroke-width="2" x1="${x}" y1="${lineY1}" x2="${x}" y2="${lineY2}" />`);
     return elements;
   }
 
@@ -648,44 +787,112 @@ export class SvgGenerator {
     // Outer group wrapper for entire effects section
     elements.push('<g>');
 
-    elements.push(this.createText("EFFECTS", x + 120, this.FIRST_ROW_Y - this.HEADER_OFFSET, "1.6em", "bold", "middle"));
+    elements.push(this.createText("EFFECTS", x + 120, this.FIRST_ROW_Y - this.HEADER_OFFSET, "1.6em", "bold", "start"));
 
-    // Mod FX
-    const modFxStatus = programData.modFxOnOff ? "On" : "Off";
-    const modFxType = Enums.ModFxType[programData.modFxType] || programData.modFxType.toString();
-    elements.push(this.createText(`MOD FX (${modFxStatus}): ${modFxType}`, x, this.FIRST_ROW_Y, "1.6em"));
-
-    const modFxTimePercent = this.percentFromValue(programData.modFxTime, 0, 1023);
-    elements.push(...this.createKnob(`MOD FX TIME ${modFxTimePercent.toFixed(1)}%`, x + 20, this.FIRST_ROW_Y + 40, modFxTimePercent));
-
-    const modFxDepthPercent = this.percentFromValue(programData.modFxDepth, 0, 1023);
-    elements.push(...this.createKnob(`MOD FX DEPTH ${modFxDepthPercent.toFixed(1)}%`, x + 140, this.FIRST_ROW_Y + 40, modFxDepthPercent));
-
-    // Reverb FX
-    const secondRowY = this.FIRST_ROW_Y + this.ROW_SPACING;
-    const reverbStatus = programData.reverbOnOff ? "On" : "Off";
-    const reverbType = Enums.ReverbSubType[programData.reverbSubType] || programData.reverbSubType.toString();
-    elements.push(this.createText(`REVERB FX (${reverbStatus}): ${reverbType}`, x, secondRowY, "1.6em"));
-
-    const reverbTimePercent = this.percentFromValue(programData.reverbTime, 0, 1023);
-    elements.push(...this.createKnob(`REVERB FX TIME ${reverbTimePercent.toFixed(1)}%`, x + 20, secondRowY + 40, reverbTimePercent));
-
-    const reverbDepthPercent = this.percentFromValue(programData.reverbDepth, 0, 1023);
-    elements.push(...this.createKnob(`REVERB FX DEPTH ${reverbDepthPercent.toFixed(1)}%`, x + 140, secondRowY + 40, reverbDepthPercent));
-
-    // Delay FX
-    const thirdRowY = this.FIRST_ROW_Y + this.ROW_SPACING * 2;
-    const delayStatus = programData.delayOnOff ? "On" : "Off";
-    const delayType = Enums.DelaySubType[programData.delaySubType] || programData.delaySubType.toString();
-    elements.push(this.createText(`DELAY FX (${delayStatus}): ${delayType}`, x, thirdRowY, "1.6em"));
-
-    const delayTimePercent = this.percentFromValue(programData.delayTime, 0, 1023);
-    elements.push(...this.createKnob(`DELAY FX TIME ${delayTimePercent.toFixed(1)}%`, x + 20, thirdRowY + 40, delayTimePercent));
-
-    const delayDepthPercent = this.percentFromValue(programData.delayDepth, 0, 1023);
-    elements.push(...this.createKnob(`DELAY FX DEPTH ${delayDepthPercent.toFixed(1)}%`, x + 140, thirdRowY + 40, delayDepthPercent));
+    // Add each effect section wrapped in its own group to match C# structure
+    elements.push(...this.createModFxSection(programData, x, this.FIRST_ROW_Y));
+    elements.push(...this.createReverbFxSection(programData, x, this.FIRST_ROW_Y + this.ROW_SPACING));
+    elements.push(...this.createDelayFxSection(programData, x, this.FIRST_ROW_Y + this.ROW_SPACING * 2 + 20));
 
     // Close outer group wrapper
+    elements.push('</g>');
+
+    return elements;
+  }
+
+  private static createModFxSection(programData: ProgramData, x: number, y: number): string[] {
+    const elements: string[] = [];
+
+    // Wrap MOD FX section in group to match C# structure
+    elements.push('<g>');
+
+    const modFxStatus = programData.modFxOnOff ? "On" : "Off";
+    let modFxType = Enums.ModFxType[programData.modFxType] || programData.modFxType.toString();
+
+    // Format MOD FX type to match C# version (e.g., "Chorus / Stereo")
+    if (programData.modFxType === Enums.ModFxType.CHORUS) {
+      modFxType = "Chorus / Stereo";
+    } else if (programData.modFxType === Enums.ModFxType.ENSEMBLE) {
+      modFxType = "Ensemble / Stereo";
+    } else if (programData.modFxType === Enums.ModFxType.FLANGER) {
+      modFxType = "Flanger / Stereo";
+    } else if (programData.modFxType === Enums.ModFxType.PHASER) {
+      modFxType = "Phaser / Stereo";
+    }
+
+    elements.push(this.createText(`MOD FX (${modFxStatus}): ${modFxType}`, x, y, "1.6em"));
+
+    const modFxTimePercent = this.percentFromValue(programData.modFxTime, 0, 1023);
+    elements.push(...this.createKnob(`MOD FX\nTIME\nRaw: ${programData.modFxTime}`, x + 20, y + 40, modFxTimePercent));
+
+    const modFxDepthPercent = this.percentFromValue(programData.modFxDepth, 0, 1023);
+    elements.push(...this.createKnob(`MOD FX\nDEPTH\nRaw: ${programData.modFxDepth}`, x + 140, y + 40, modFxDepthPercent));
+
+    // Close MOD FX group
+    elements.push('</g>');
+
+    return elements;
+  }
+
+  private static createReverbFxSection(programData: ProgramData, x: number, y: number): string[] {
+    const elements: string[] = [];
+
+    // Wrap REVERB FX section in group to match C# structure
+    elements.push('<g>');
+
+    const reverbStatus = programData.reverbOnOff ? "On" : "Off";
+    let reverbType = Enums.ReverbSubType[programData.reverbSubType] || programData.reverbSubType.toString();
+
+    // Format REVERB FX type to match C# version (e.g., "Hall")
+    if (programData.reverbSubType === Enums.ReverbSubType.HALL) {
+      reverbType = "Hall";
+    }
+
+    elements.push(this.createText(`REVERB FX (${reverbStatus}): ${reverbType}`, x, y, "1.6em"));
+
+    const reverbTimePercent = this.percentFromValue(programData.reverbTime, 0, 1023);
+    elements.push(...this.createKnob(`REVERB FX\nTIME\nRaw: ${programData.reverbTime}`, x + 20, y + 40, reverbTimePercent));
+
+    const reverbDepthPercent = this.percentFromValue(programData.reverbDepth, 0, 1023);
+    elements.push(...this.createKnob(`REVERB FX\nDEPTH\nRaw: ${programData.reverbDepth}`, x + 140, y + 40, reverbDepthPercent));
+
+    // Add REVERB FX DRY/WET knob
+    const reverbDryWetPercent = this.percentFromValue(programData.reverbDryWet, 0, 1024);
+    elements.push(...this.createKnob(`REVERB FX\nDRY/WET\nRaw: ${programData.reverbDryWet}`, x + 260, y + 40, reverbDryWetPercent));
+
+    // Close REVERB FX group
+    elements.push('</g>');
+
+    return elements;
+  }
+
+  private static createDelayFxSection(programData: ProgramData, x: number, y: number): string[] {
+    const elements: string[] = [];
+
+    // Wrap DELAY FX section in group to match C# structure
+    elements.push('<g>');
+
+    const delayStatus = programData.delayOnOff ? "On" : "Off";
+    let delayType = Enums.DelaySubType[programData.delaySubType] || programData.delaySubType.toString();
+
+    // Format DELAY FX type to match C# version (e.g., "Stereo")
+    if (programData.delaySubType === Enums.DelaySubType.STEREO) {
+      delayType = "Stereo";
+    }
+
+    elements.push(this.createText(`DELAY FX (${delayStatus}): ${delayType}`, x, y, "1.6em"));
+
+    const delayTimePercent = this.percentFromValue(programData.delayTime, 0, 1023);
+    elements.push(...this.createKnob(`DELAY FX\nTIME\nRaw: ${programData.delayTime}`, x + 20, y + 40, delayTimePercent));
+
+    const delayDepthPercent = this.percentFromValue(programData.delayDepth, 0, 1023);
+    elements.push(...this.createKnob(`DELAY FX\nDEPTH\nRaw: ${programData.delayDepth}`, x + 140, y + 40, delayDepthPercent));
+
+    // Add DELAY FX DRY/WET knob
+    const delayDryWetPercent = this.percentFromValue(programData.delayDryWet, 0, 1024);
+    elements.push(...this.createKnob(`DELAY FX\nDRY/WET\nRaw: ${programData.delayDryWet}`, x + 260, y + 40, delayDryWetPercent));
+
+    // Close DELAY FX group
     elements.push('</g>');
 
     return elements;
@@ -694,16 +901,17 @@ export class SvgGenerator {
   private static addMiscSection(programData: ProgramData, x: number): string[] {
     const elements: string[] = [];
 
-    // Misc Section
-    elements.push(this.createText("MISC", x + 120, this.FIRST_ROW_Y - this.HEADER_OFFSET, "1.6em", "bold", "middle"));
+    // Misc Section - wrap in a group
+    elements.push('<g>');
 
-    // CV Input and Program Edit Info
+    // CV Input and Program Edit Info - wrap in its own group to match C# structure
+    elements.push('<g>');
     const cvInputInfo = [
       "**Program Edit / CV Input",
-      `CV IN Mode: ${Enums.CVInMode[programData.cvInMode] || programData.cvInMode}`,
-      `CV IN 1 Assign: ${Enums.AssignTarget[programData.cvIn1Assign] || programData.cvIn1Assign} | Range: ${DisplayHelper.minusToPlus100String(programData.cvIn1Range)}`,
-      `CV IN 2 Assign: ${Enums.AssignTarget[programData.cvIn2Assign] || programData.cvIn2Assign} | Range: ${DisplayHelper.minusToPlus100String(programData.cvIn2Range)}`,
-      `Modulation / MIDI Aftertouch: ${Enums.AssignTarget[programData.midiAfterTouchAssign] || programData.midiAfterTouchAssign}`,
+      `CV IN Mode: ${this.formatEnumForDisplay(Enums.CVInMode[programData.cvInMode] || programData.cvInMode.toString())}`,
+      `CV IN 1 Assign: ${this.formatAssignTarget(programData.cvIn1Assign)} | Range: ${DisplayHelper.minusToPlus100String(programData.cvIn1Range)}`,
+      `CV IN 2 Assign: ${this.formatAssignTarget(programData.cvIn2Assign)} | Range: ${DisplayHelper.minusToPlus100String(programData.cvIn2Range)}`,
+      `Modulation / MIDI Aftertouch: ${this.formatAssignTarget(programData.midiAfterTouchAssign)}`,
       `Key Trigger Transpose (SHIFT+PLAY): ${programData.keyTrig ? "On" : "Off"}`
     ];
 
@@ -713,8 +921,8 @@ export class SvgGenerator {
       const cleanedLine = line.startsWith('**') ? line.substring(2) : line;
       elements.push(this.createText(cleanedLine, x, yPos, "1.2em", fontWeight, "start"));
     });
+    elements.push('</g>');
 
-    // Close Misc Section
     elements.push('</g>');
 
     return elements;
@@ -783,5 +991,40 @@ export class SvgGenerator {
     if (value >= 668 && value <= 1020) return `+${((value - 668) * 944 / 352 + 256).toFixed(0)}`;
     if (value >= 1020 && value <= 1023) return "+1200";
     return "???";
+  }
+
+  private static formatWithIndentation(elements: string[]): string {
+    const lines: string[] = [];
+    let indentLevel = 0;
+    const indentSize = '  '; // 2 spaces
+
+    for (const element of elements) {
+      const trimmed = element.trim();
+      if (!trimmed) continue;
+
+      // Handle closing tags
+      if (trimmed.startsWith('</')) {
+        indentLevel = Math.max(0, indentLevel - 1);
+      }
+
+      // Add the element with proper indentation
+      const indent = indentSize.repeat(indentLevel);
+      lines.push(indent + trimmed);
+
+      // Handle opening tags (but not self-closing ones or XML declaration)
+      if (trimmed.startsWith('<') &&
+          !trimmed.startsWith('</') &&
+          !trimmed.endsWith('/>') &&
+          !trimmed.startsWith('<?')) {
+        // Special handling: only increase indent for actual group tags, not text/svg elements
+        if (trimmed.startsWith('<g>') ||
+            trimmed.startsWith('<svg ') ||
+            (trimmed.includes('<g') && !trimmed.includes('>'))) {
+          indentLevel++;
+        }
+      }
+    }
+
+    return lines.join('\n');
   }
 }

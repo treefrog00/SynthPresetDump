@@ -213,7 +213,7 @@ function compareSvgProgramData(expectedPath: string, actualPath: string): void {
             matches++;
         } else {
             mismatches++;
-            if (mismatches <= 10) { // Show first 10 mismatches
+            if (mismatches <= 4) { // Show first 10 mismatches
                 console.log(`   ⚠️  Line ${i + 1}:`);
                 console.log(`       Expected: ${expectedLine}`);
                 console.log(`       Actual:   ${actualLine}`);
@@ -237,8 +237,6 @@ function compareSvgProgramData(expectedPath: string, actualPath: string): void {
 
     if (mismatches === 0 && expectedLines.length === actualLines.length) {
         console.log('   🎉 All SVG lines match perfectly!');
-    } else if (mismatches > 10) {
-        console.log(`   📝 ... and ${mismatches - 10} more line differences`);
     }
 }
 
