@@ -406,10 +406,24 @@ export class SvgGenerator {
     } else if (programData.multiOscType === Enums.MultiOscType.VPM) {
       title = `VPM / ${Enums.MultiOscVPM[programData.selectedMultiOscVpm] || programData.selectedMultiOscVpm}`;
     } else if (programData.multiOscType === Enums.MultiOscType.NOISE) {
-      title = `Noise / ${Enums.MultiOscNoise[programData.selectedMultiOscNoise] || programData.selectedMultiOscNoise}`;
+      title = `Noise / ${this.formatEnumForDisplay(Enums.MultiOscNoise[programData.selectedMultiOscNoise]) || programData.selectedMultiOscNoise}`;
     }
 
     elements.push(this.createText(`MULTI ENGINE: ${title}`, x + 315, this.FIRST_ROW_Y + this.ROW_SPACING * 2 + 20 - this.HEADER_OFFSET, "1.6em", "bold", "middle"));
+
+    // Program Edit information for Multi Engine
+    const multiEditInfo = [
+      "**Program Edit / Other",
+      `Multi Octave: ${["16'", "8'", "4'", "2'"][programData.multiOscOctave] || "8'"}`,
+      `Multi Routing: ${programData.multiRouting === Enums.MultiRouting.PRE_VCF ? "PreVCF" : "PostVCF"}`
+    ];
+
+    multiEditInfo.forEach((line, index) => {
+      const yPos = this.FIRST_ROW_Y + this.ROW_SPACING * 2 + 40 + (index * 20);
+      const fontWeight = line.startsWith('**') ? 'bold' : 'normal';
+      const cleanedLine = line.startsWith('**') ? line.substring(2) : line;
+      elements.push(this.createText(cleanedLine, x + 80, yPos, "1.2em", fontWeight, "start"));
+    });
 
     // Multi Engine Knobs based on type
     if (programData.multiOscType === Enums.MultiOscType.USER) {
@@ -427,10 +441,7 @@ export class SvgGenerator {
       const shiftShapePercent = this.percentFromValue(programData.shiftShapeVpm, 0, 1023);
       elements.push(...this.createKnob(`SHIFT+SHAPE\nRATIO OFFSET\nRaw: ${programData.shiftShapeVpm}\n(${this.percent1023String(programData.shiftShapeVpm)})`, x + 355, this.FIRST_ROW_Y + this.ROW_SPACING * 2 + 20, shiftShapePercent));
     } else if (programData.multiOscType === Enums.MultiOscType.NOISE) {
-      // Noise oscillator knobs
-      const shiftShapePercent = this.percentFromValue(programData.shiftShapeNoise, 0, 1023);
-      elements.push(...this.createKnob(`SHIFT+SHAPE\nKEY TRACK\nRaw: ${programData.shiftShapeNoise}\n(${this.percent1023String(programData.shiftShapeNoise)})`, x + 355, this.FIRST_ROW_Y + this.ROW_SPACING * 2 + 20, shiftShapePercent));
-
+      // Noise oscillator knobs (SHAPE first to match C# order)
       const shapePercent = this.percentFromValue(programData.shapeNoise, 0, 1023);
       let shapeLabel = "RATE";
       if (programData.selectedMultiOscNoise === Enums.MultiOscNoise.PEAK) {
@@ -439,10 +450,13 @@ export class SvgGenerator {
         shapeLabel = "CUTOFF";
       }
       elements.push(...this.createKnob(`SHAPE\n${shapeLabel}\nRaw: ${programData.shapeNoise}\n(${this.percent1023String(programData.shapeNoise)})`, x + 510, this.FIRST_ROW_Y + this.ROW_SPACING * 2 + 20, shapePercent));
+
+      const shiftShapePercent = this.percentFromValue(programData.shiftShapeNoise, 0, 1023);
+      elements.push(...this.createKnob(`SHIFT+SHAPE\nKEY TRACK\nRaw: ${programData.shiftShapeNoise}\n(${this.percent1023String(programData.shiftShapeNoise)})`, x + 355, this.FIRST_ROW_Y + this.ROW_SPACING * 2 + 20, shiftShapePercent));
     }
 
-    // Add divider line
-    elements.push(...this.createDividerLine(x + 650));
+    // Add vertical divider line
+    elements.push(`<line stroke="${this.STROKE_COLOR}" stroke-width="2" x1="${x + 650}" y1="${this.FIRST_ROW_Y}" x2="${x + 650}" y2="${this.SYNTH_HEIGHT - 100}" />`);
 
     // Close outer group wrapper
     elements.push('</g>');
