@@ -104,6 +104,9 @@ export class SvgGenerator {
     const cx = x + this.KNOB_RADIUS;
     const cy = y + this.KNOB_RADIUS;
 
+    // Wrap entire knob in group to match C# structure
+    elements.push('<g>');
+
     // Knob circle
     elements.push(`<circle cx="${cx}" cy="${cy}" r="${this.KNOB_RADIUS}" stroke="${this.STROKE_COLOR}" fill="transparent" stroke-width="${this.STROKE_WIDTH}" />`);
 
@@ -127,6 +130,9 @@ export class SvgGenerator {
 
       elements.push('</g>');
     }
+
+    // Close entire knob group
+    elements.push('</g>');
 
     return elements;
   }
@@ -253,25 +259,16 @@ export class SvgGenerator {
     // Another vertical divider line
     elements.push(`<line stroke="${this.STROKE_COLOR}" stroke-width="2" x1="${secondX + 125}" y1="${this.FIRST_ROW_Y}" x2="${secondX + 125}" y2="${this.SYNTH_HEIGHT - 100}" />`);
 
-    // Group for portamento knob
-    elements.push('<g>');
-
     // Portamento knob with detailed info
     const portamentoPercent = Math.round(this.percentFromValue(programData.portamento, 0, 127) * 100) / 100;
     const portamentoLabel = [
       "PORTAMENTO",
       `${portamentoPercent}%`,
       `Raw: ${programData.portamento}`,
-      `Mode: ${Enums.PortamentoMode[programData.portamentoMode] || programData.portamentoMode}`,
+      `Mode: ${this.formatEnumForDisplay(Enums.PortamentoMode[programData.portamentoMode]) || programData.portamentoMode}`,
       `BPM Sync: ${programData.portamentoBpmSync ? "On" : "Off"}`
     ].join('\n');
     elements.push(...this.createKnob(portamentoLabel, secondX, this.FIRST_ROW_Y, portamentoPercent));
-
-    // Close portamento group
-    elements.push('</g>');
-
-    // Group for voice mode depth knob
-    elements.push('<g>');
 
     // Voice mode depth knob with detailed info
     const secondRowY = this.FIRST_ROW_Y + this.ROW_SPACING;
@@ -286,9 +283,6 @@ export class SvgGenerator {
       `(${DisplayHelper.percent1023String(programData.voiceModeDepth)})`
     ].join('\n');
     elements.push(...this.createKnob(vmDepthKnobLabel, secondX, secondRowY, vmDepthPercent));
-
-    // Close voice mode depth group
-    elements.push('</g>');
 
     // Voice mode type switch
     const thirdRowY = this.FIRST_ROW_Y + this.ROW_SPACING * 2 + 20;
@@ -344,15 +338,11 @@ export class SvgGenerator {
     elements.push(this.createText("VCO 2", x + 315, secondRowY - this.HEADER_OFFSET, "1.6em", "bold", "middle"));
 
     // VCO 1
-    elements.push('<g>');
     const pitch1Percent = this.percentFromValue(programData.vco1Pitch, 0, 1023);
     elements.push(...this.createKnob(`PITCH\n${this.pitchCents(programData.vco1Pitch)} Cent\nRaw: ${programData.vco1Pitch}\n(${this.percent1023String(programData.vco1Pitch)})`, x + 200, this.FIRST_ROW_Y, pitch1Percent));
-    elements.push('</g>');
 
-    elements.push('<g>');
     const shape1Percent = this.percentFromValue(programData.vco1Shape, 0, 1023);
     elements.push(...this.createKnob(`SHAPE\nRaw: ${programData.vco1Shape}\n(${this.percent1023String(programData.vco1Shape)})`, x + 355, this.FIRST_ROW_Y, shape1Percent));
-    elements.push('</g>');
 
     // VCO 1 wave and octave switches
     elements.push('<g>');
@@ -364,7 +354,6 @@ export class SvgGenerator {
     elements.push('</g>');
     // VCO 2
 
-    elements.push('<g>');
     const pitch2Percent = this.percentFromValue(programData.vco2Pitch, 0, 1023);
     elements.push(...this.createKnob(`PITCH\n${this.pitchCents(programData.vco2Pitch)} Cent\nRaw: ${programData.vco2Pitch}\n(${this.percent1023String(programData.vco2Pitch)})`, x + 200, secondRowY, pitch2Percent));
 
